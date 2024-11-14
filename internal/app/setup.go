@@ -2,6 +2,7 @@
 // Use of this source code is governed by a MIT-style license that can be
 // found in the LICENSE file.
 // SPDX-License-Identifier: MIT
+
 package app
 
 import (
@@ -11,15 +12,19 @@ import (
 )
 
 type Setup struct {
-	config *config.UEConfig
+	config           *config.UEConfig
+	httpServerEntity *HttpServerEntity
 }
 
 func NewSetup(config *config.UEConfig) *Setup {
 	return &Setup{
-		config: config,
+		config:           config,
+		httpServerEntity: NewHttpServerEntity(config.Control.BindAddr),
 	}
 }
+
 func (s *Setup) Init(ctx context.Context) error {
+	s.httpServerEntity.Start()
 	return nil
 }
 
@@ -35,5 +40,6 @@ func (s *Setup) Run(ctx context.Context) error {
 }
 
 func (s *Setup) Exit() error {
+	s.httpServerEntity.Stop()
 	return nil
 }
