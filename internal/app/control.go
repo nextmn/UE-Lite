@@ -7,6 +7,7 @@ package app
 
 import (
 	"context"
+	"net"
 	"net/http"
 	"time"
 
@@ -34,13 +35,18 @@ func NewHttpServerEntity(bindAddr string) *HttpServerEntity {
 	return &e
 }
 
-func (e *HttpServerEntity) Start() {
-	go func() {
+func (e *HttpServerEntity) Start() error {
+	l, err := net.Listen("tcp", e.srv.Addr)
+	if err != nil {
+		return err
+	}
+	go func(ln net.Listener) {
 		logrus.Info("Starting HTTP Server")
-		if err := e.srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		if err := e.srv.Serve(ln); err != nil && err != http.ErrServerClosed {
 			logrus.WithError(err).Error("Http Server error")
 		}
-	}()
+	}(l)
+	return nil
 }
 
 func (e *HttpServerEntity) Stop() {

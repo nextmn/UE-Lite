@@ -24,7 +24,9 @@ func NewSetup(config *config.UEConfig) *Setup {
 }
 
 func (s *Setup) Init(ctx context.Context) error {
-	s.httpServerEntity.Start()
+	if err := s.httpServerEntity.Start(); err != nil {
+		return err
+	}
 	return nil
 }
 
