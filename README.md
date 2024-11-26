@@ -23,12 +23,15 @@ Simply run `make build` and `make install`.
 ### Docker
 If you plan using NextMN-UE Lite with Docker:
 - The container required the `NET_ADMIN` capability;
+- The tun interface (`/dev/net/tun`) must be available in the container.
 
 This can be done in `docker-compose.yaml` by defining the following for the service:
 
 ```yaml
 cap_add:
     - NET_ADMIN
+devices:
+    - "/dev/net/tun"
 ```
 
 ## Author

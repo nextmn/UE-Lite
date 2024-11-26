@@ -7,6 +7,7 @@ package config
 
 import (
 	"io/ioutil"
+	"net/netip"
 	"path/filepath"
 
 	"github.com/nextmn/json-api/jsonapi"
@@ -33,10 +34,22 @@ func ParseConf(file string) (*UEConfig, error) {
 
 type UEConfig struct {
 	Control Control `yaml:"control"`
+	Ran     Ran     `yaml:"ran"`
 	Logger  *Logger `yaml:"logger,omitempty"`
 }
 
 type Control struct {
 	Uri      jsonapi.ControlURI `yaml:"uri"`       // may contain domain name instead of ip address
-	BindAddr string             `yaml:"bind-addr"` // in the form `ip:port`
+	BindAddr netip.AddrPort     `yaml:"bind-addr"` // in the form `ip:port`
+}
+
+type Ran struct {
+	BindAddr    netip.AddrPort       `yaml:"bind-addr"`    // in the form ip:port
+	Gnbs        []jsonapi.ControlURI `yaml:"gnbs"`         // list of gnb used
+	PDUSessions []PDUSession         `yaml:"pdu-sessions"` // list of pdu sessions that will be established
+}
+
+type PDUSession struct {
+	Gnb jsonapi.ControlURI `yaml:"gnb"`
+	Dnn string             `yaml:"dnn"`
 }
