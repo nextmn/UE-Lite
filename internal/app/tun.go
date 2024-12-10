@@ -6,6 +6,7 @@
 package app
 
 import (
+	"context"
 	"strconv"
 
 	"github.com/sirupsen/logrus"
@@ -16,6 +17,32 @@ const (
 	TUN_NAME = "nextmn-ue-lite"
 	TUN_MTU  = 1400
 )
+
+type TunManager struct {
+	ready bool
+	name  string
+}
+
+func NewTunManager() *TunManager {
+	return &TunManager{}
+}
+
+func (t *TunManager) Start(ctx context.Context) (*water.Interface, error) {
+	iface, err := NewTunIface()
+	t.ready = true
+	t.name = iface.Name()
+	go func(ctx context.Context) {
+		select {
+		case <-ctx.Done():
+			err = runIPTables("-D", "OUTPUT", "-o", t.name, "-p", "icmp", "--icmp-type", "redirect", "-j", "DROP")
+			if err != nil {
+				logrus.WithError(err).WithFields(logrus.Fields{"interface": t.name}).Error("Error while removing iptables rules")
+				t.ready = false
+			}
+		}
+	}(ctx)
+	return iface, err
+}
 
 func NewTunIface() (*water.Interface, error) {
 	config := water.Config{

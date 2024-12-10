@@ -16,6 +16,7 @@ type Setup struct {
 	httpServerEntity *HttpServerEntity
 	radioDaemon      *RadioDaemon
 	psMan            *PduSessionsManager
+	tunMan           *TunManager
 }
 
 func NewSetup(config *config.UEConfig) *Setup {
@@ -27,6 +28,7 @@ func NewSetup(config *config.UEConfig) *Setup {
 		httpServerEntity: NewHttpServerEntity(config.Control.BindAddr, radio, ps),
 		radioDaemon:      NewRadioDaemon(config.Control.Uri, config.Ran.Gnbs, config.Ran.PDUSessions, radio, ps, psMan, config.Ran.BindAddr),
 		psMan:            psMan,
+		tunMan:           NewTunManager(),
 	}
 }
 
@@ -34,7 +36,7 @@ func (s *Setup) Init(ctx context.Context) error {
 	if err := s.httpServerEntity.Start(); err != nil {
 		return err
 	}
-	tun, err := NewTunIface()
+	tun, err := s.tunMan.Start(ctx)
 	if err != nil {
 		return err
 	}
