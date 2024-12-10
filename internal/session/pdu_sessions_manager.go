@@ -3,59 +3,45 @@
 // found in the LICENSE file.
 // SPDX-License-Identifier: MIT
 
-package app
+package session
 
 import (
 	"fmt"
-	"net"
 	"net/netip"
 	"sync"
+
+	"github.com/nextmn/ue-lite/internal/tun"
 
 	"github.com/nextmn/json-api/jsonapi"
 
 	"github.com/sirupsen/logrus"
-	"github.com/songgao/water/waterutil"
 )
 
 type PduSessionsManager struct {
 	Links map[netip.Addr]jsonapi.ControlURI // UeIpAddr : Gnb control URI
 	sync.Mutex
 	isInit bool
-	radio  *Radio
+	tun    *tun.TunManager
 }
 
-func NewPduSessionsManager(radio *Radio) *PduSessionsManager {
+func NewPduSessionsManager(tunMan *tun.TunManager) *PduSessionsManager {
 	return &PduSessionsManager{
 		Links:  make(map[netip.Addr]jsonapi.ControlURI),
 		isInit: false,
-		radio:  radio,
+		tun:    tunMan,
 	}
 }
 
-func (p *PduSessionsManager) Write(pkt []byte, srv *net.UDPConn) error {
-	if !waterutil.IsIPv4(pkt) {
-		return fmt.Errorf("not an IPv4 packet")
-	}
-	src, ok := netip.AddrFromSlice(waterutil.IPv4Source(pkt).To4())
-	if !ok {
-		return fmt.Errorf("error while retrieving ip addr")
-	}
+func (p *PduSessionsManager) LinkedGnb(src netip.Addr) (jsonapi.ControlURI, error) {
 	gnb, ok := p.Links[src]
 	if !ok {
 		logrus.WithFields(
 			logrus.Fields{
 				"ip-addr": src,
 			}).Trace("no pdu session found for this ip address")
-		return fmt.Errorf("no pdu session found for this ip address")
+		return jsonapi.ControlURI{}, fmt.Errorf("no pdu session found for this ip address")
 	}
-	ret := p.radio.Write(pkt, srv, gnb)
-	if ret == nil {
-		logrus.WithFields(
-			logrus.Fields{
-				"ip-addr": src,
-			}).Trace("packet forwarded")
-	}
-	return ret
+	return gnb, nil
 
 }
 
@@ -69,11 +55,7 @@ func (p *PduSessionsManager) DeletePduSession(ueIpAddr netip.Addr) error {
 	logrus.WithFields(logrus.Fields{
 		"ue-ip-addr": ueIpAddr,
 	}).Debug("Creating ip address for new PDU Session")
-	if err := runIP("addr", "del", fmt.Sprintf("%s/%d", ueIpAddr.String(), ueIpAddr.BitLen()), "dev", TUN_NAME); err != nil {
-		logrus.WithError(err).WithFields(logrus.Fields{
-			"ue-ip-addr": ueIpAddr,
-			"dev":        TUN_NAME,
-		}).Error("Could not add ip address for new PDU Session")
+	if err := p.tun.DelIp(ueIpAddr); err != nil {
 		return err
 	}
 	return nil
@@ -97,11 +79,7 @@ func (p *PduSessionsManager) CreatePduSession(ueIpAddr netip.Addr, gnb jsonapi.C
 	logrus.WithFields(logrus.Fields{
 		"ue-ip-addr": ueIpAddr,
 	}).Debug("Creating ip address for new PDU Session")
-	if err := runIP("addr", "add", fmt.Sprintf("%s/%d", ueIpAddr.String(), ueIpAddr.BitLen()), "dev", TUN_NAME); err != nil {
-		logrus.WithError(err).WithFields(logrus.Fields{
-			"ue-ip-addr": ueIpAddr,
-			"dev":        TUN_NAME,
-		}).Error("Could not add ip address for new PDU Session")
+	if err := p.tun.AddIp(ueIpAddr); err != nil {
 		return err
 	}
 	return nil

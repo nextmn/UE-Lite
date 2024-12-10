@@ -3,23 +3,26 @@
 // found in the LICENSE file.
 // SPDX-License-Identifier: MIT
 
-package app
+package cli
 
 import (
 	"net/http"
 
 	"github.com/nextmn/json-api/jsonapi"
 
+	"github.com/nextmn/ue-lite/internal/radio"
+	"github.com/nextmn/ue-lite/internal/session"
+
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 )
 
 type Cli struct {
-	Radio       *Radio
-	PduSessions *PduSessions
+	Radio       *radio.Radio
+	PduSessions *session.PduSessions
 }
 
-func NewCli(radio *Radio, pduSessions *PduSessions) *Cli {
+func NewCli(radio *radio.Radio, pduSessions *session.PduSessions) *Cli {
 	return &Cli{
 		Radio:       radio,
 		PduSessions: pduSessions,

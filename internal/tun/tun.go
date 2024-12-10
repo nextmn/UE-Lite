@@ -3,10 +3,12 @@
 // found in the LICENSE file.
 // SPDX-License-Identifier: MIT
 
-package app
+package tun
 
 import (
 	"context"
+	"fmt"
+	"net/netip"
 	"strconv"
 
 	"github.com/sirupsen/logrus"
@@ -21,16 +23,21 @@ const (
 type TunManager struct {
 	ready bool
 	name  string
+	Tun   *water.Interface
 }
 
 func NewTunManager() *TunManager {
 	return &TunManager{}
 }
 
-func (t *TunManager) Start(ctx context.Context) (*water.Interface, error) {
-	iface, err := NewTunIface()
+func (t *TunManager) Start(ctx context.Context) error {
+	tun, err := newTunIface()
+	t.Tun = tun
+	if err != nil {
+		return err
+	}
 	t.ready = true
-	t.name = iface.Name()
+	t.name = t.Tun.Name()
 	go func(ctx context.Context) {
 		select {
 		case <-ctx.Done():
@@ -41,10 +48,10 @@ func (t *TunManager) Start(ctx context.Context) (*water.Interface, error) {
 			}
 		}
 	}(ctx)
-	return iface, err
+	return err
 }
 
-func NewTunIface() (*water.Interface, error) {
+func newTunIface() (*water.Interface, error) {
 	config := water.Config{
 		DeviceType: water.TUN,
 	}
@@ -83,4 +90,25 @@ func NewTunIface() (*water.Interface, error) {
 		return nil, err
 	}
 	return iface, nil
+}
+
+func (t *TunManager) DelIp(ip netip.Addr) error {
+	if err := runIP("addr", "del", fmt.Sprintf("%s/%d", ip.String(), ip.BitLen()), "dev", TUN_NAME); err != nil {
+		logrus.WithError(err).WithFields(logrus.Fields{
+			"ue-ip-addr": ip,
+			"dev":        TUN_NAME,
+		}).Error("Could not remove ip address")
+		return err
+	}
+	return nil
+}
+func (t *TunManager) AddIp(ip netip.Addr) error {
+	if err := runIP("addr", "add", fmt.Sprintf("%s/%d", ip.String(), ip.BitLen()), "dev", TUN_NAME); err != nil {
+		logrus.WithError(err).WithFields(logrus.Fields{
+			"ue-ip-addr": ip,
+			"dev":        TUN_NAME,
+		}).Error("Could not add ip address for new PDU Session")
+		return err
+	}
+	return nil
 }

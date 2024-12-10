@@ -9,26 +9,30 @@ import (
 	"context"
 
 	"github.com/nextmn/ue-lite/internal/config"
+	"github.com/nextmn/ue-lite/internal/radio"
+	"github.com/nextmn/ue-lite/internal/session"
+	"github.com/nextmn/ue-lite/internal/tun"
 )
 
 type Setup struct {
 	config           *config.UEConfig
 	httpServerEntity *HttpServerEntity
-	radioDaemon      *RadioDaemon
-	psMan            *PduSessionsManager
-	tunMan           *TunManager
+	radioDaemon      *radio.RadioDaemon
+	ps               *session.PduSessions
+	tunMan           *tun.TunManager
 }
 
 func NewSetup(config *config.UEConfig) *Setup {
-	radio := NewRadio(config.Control.Uri, config.Ran.BindAddr, "go-github-nextmn-ue-lite")
-	psMan := NewPduSessionsManager(radio)
-	ps := NewPduSessions(config.Control.Uri, psMan, "go-github-nextmn-ue-lite")
+	r := radio.NewRadio(config.Control.Uri, config.Ran.BindAddr, "go-github-nextmn-ue-lite")
+	tunMan := tun.NewTunManager()
+	psMan := session.NewPduSessionsManager(tunMan)
+	ps := session.NewPduSessions(config.Control.Uri, psMan, config.Ran.PDUSessions, "go-github-nextmn-ue-lite")
 	return &Setup{
 		config:           config,
-		httpServerEntity: NewHttpServerEntity(config.Control.BindAddr, radio, ps),
-		radioDaemon:      NewRadioDaemon(config.Control.Uri, config.Ran.Gnbs, config.Ran.PDUSessions, radio, ps, psMan, config.Ran.BindAddr),
-		psMan:            psMan,
-		tunMan:           NewTunManager(),
+		httpServerEntity: NewHttpServerEntity(config.Control.BindAddr, r, ps),
+		radioDaemon:      radio.NewRadioDaemon(config.Control.Uri, config.Ran.Gnbs, r, psMan, tunMan, config.Ran.BindAddr),
+		ps:               ps,
+		tunMan:           tunMan,
 	}
 }
 
@@ -36,11 +40,13 @@ func (s *Setup) Init(ctx context.Context) error {
 	if err := s.httpServerEntity.Start(); err != nil {
 		return err
 	}
-	tun, err := s.tunMan.Start(ctx)
-	if err != nil {
+	if err := s.tunMan.Start(ctx); err != nil {
 		return err
 	}
-	if err := s.radioDaemon.Start(ctx, tun); err != nil {
+	if err := s.radioDaemon.Start(ctx); err != nil {
+		return err
+	}
+	if err := s.ps.Start(ctx); err != nil {
 		return err
 	}
 	return nil

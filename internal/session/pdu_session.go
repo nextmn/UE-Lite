@@ -3,14 +3,15 @@
 // found in the LICENSE file.
 // SPDX-License-Identifier: MIT
 
-package app
+package session
 
 import (
 	"bytes"
 	"context"
 	"encoding/json"
 	"net/http"
-	"sync"
+
+	"github.com/nextmn/ue-lite/internal/config"
 
 	"github.com/nextmn/json-api/jsonapi"
 	"github.com/nextmn/json-api/jsonapi/n1n2"
@@ -20,20 +21,20 @@ import (
 )
 
 type PduSessions struct {
-	PduSessionsMap     sync.Map // key: overlay ip address, value: gnb control uri
-	Control            jsonapi.ControlURI
-	Client             http.Client
-	UserAgent          string
-	PduSessionsManager *PduSessionsManager
+	Control   jsonapi.ControlURI
+	Client    http.Client
+	UserAgent string
+	psMan     *PduSessionsManager
+	reqPs     []config.PDUSession
 }
 
-func NewPduSessions(control jsonapi.ControlURI, pduSessionsManager *PduSessionsManager, userAgent string) *PduSessions {
+func NewPduSessions(control jsonapi.ControlURI, psMan *PduSessionsManager, reqPs []config.PDUSession, userAgent string) *PduSessions {
 	return &PduSessions{
-		Client:             http.Client{},
-		PduSessionsMap:     sync.Map{},
-		Control:            control,
-		UserAgent:          userAgent,
-		PduSessionsManager: pduSessionsManager,
+		Client:    http.Client{},
+		Control:   control,
+		UserAgent: userAgent,
+		psMan:     psMan,
+		reqPs:     reqPs,
 	}
 }
 
@@ -73,14 +74,22 @@ func (p *PduSessions) EstablishmentAccept(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, jsonapi.MessageWithError{Message: "could not deserialize", Error: err})
 		return
 	}
-	p.PduSessionsMap.Store(ps.Addr, ps.Header.Gnb)
 
 	logrus.WithFields(logrus.Fields{
 		"gnb":     ps.Header.Gnb.String(),
 		"ip-addr": ps.Addr,
 	}).Info("New PDU Session")
 
-	p.PduSessionsManager.CreatePduSession(ps.Addr, ps.Header.Gnb)
+	p.psMan.CreatePduSession(ps.Addr, ps.Header.Gnb)
 
 	c.Status(http.StatusNoContent)
+}
+
+func (p *PduSessions) Start(ctx context.Context) error {
+	for _, ps := range p.reqPs {
+		if err := p.InitEstablish(ctx, ps.Gnb, ps.Dnn); err != nil {
+			return err
+		}
+	}
+	return nil
 }

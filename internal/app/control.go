@@ -12,6 +12,10 @@ import (
 	"net/netip"
 	"time"
 
+	"github.com/nextmn/ue-lite/internal/cli"
+	"github.com/nextmn/ue-lite/internal/radio"
+	"github.com/nextmn/ue-lite/internal/session"
+
 	"github.com/nextmn/json-api/healthcheck"
 
 	"github.com/gin-gonic/gin"
@@ -20,36 +24,36 @@ import (
 
 type HttpServerEntity struct {
 	srv   *http.Server
-	ps    *PduSessions
-	radio *Radio
-	cli   *Cli
+	ps    *session.PduSessions
+	radio *radio.Radio
+	cli   *cli.Cli
 }
 
-func NewHttpServerEntity(bindAddr netip.AddrPort, radio *Radio, ps *PduSessions) *HttpServerEntity {
-	cli := NewCli(radio, ps)
+func NewHttpServerEntity(bindAddr netip.AddrPort, r *radio.Radio, ps *session.PduSessions) *HttpServerEntity {
+	c := cli.NewCli(r, ps)
 	// TODO: gin.SetMode(gin.DebugMode) / gin.SetMode(gin.ReleaseMode) depending on log level
-	r := gin.Default()
-	r.GET("/status", Status)
+	h := gin.Default()
+	h.GET("/status", Status)
 
 	// CLI
-	r.POST("/cli/radio/peer", cli.RadioPeer)
-	r.POST("/cli/ps/establish", cli.PsEstablish)
+	h.POST("/cli/radio/peer", c.RadioPeer)
+	h.POST("/cli/ps/establish", c.PsEstablish)
 
 	// Radio
-	r.POST("/radio/peer", radio.Peer)
+	h.POST("/radio/peer", r.Peer)
 
 	// Pdu Session
-	r.POST("/ps/establishment-accept", ps.EstablishmentAccept)
+	h.POST("/ps/establishment-accept", ps.EstablishmentAccept)
 
 	logrus.WithFields(logrus.Fields{"http-addr": bindAddr}).Info("HTTP Server created")
 	e := HttpServerEntity{
 		srv: &http.Server{
 			Addr:    bindAddr.String(),
-			Handler: r,
+			Handler: h,
 		},
 		ps:    ps,
-		radio: radio,
-		cli:   cli,
+		radio: r,
+		cli:   c,
 	}
 	return &e
 }
