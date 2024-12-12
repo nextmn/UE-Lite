@@ -7,6 +7,7 @@ package app
 
 import (
 	"context"
+	"time"
 
 	"github.com/nextmn/ue-lite/internal/config"
 	"github.com/nextmn/ue-lite/internal/radio"
@@ -36,8 +37,8 @@ func NewSetup(config *config.UEConfig) *Setup {
 	}
 }
 
-func (s *Setup) Init(ctx context.Context) error {
-	if err := s.httpServerEntity.Start(); err != nil {
+func (s *Setup) Run(ctx context.Context) error {
+	if err := s.httpServerEntity.Start(ctx); err != nil {
 		return err
 	}
 	if err := s.tunMan.Start(ctx); err != nil {
@@ -49,21 +50,14 @@ func (s *Setup) Init(ctx context.Context) error {
 	if err := s.ps.Start(ctx); err != nil {
 		return err
 	}
-	return nil
-}
-
-func (s *Setup) Run(ctx context.Context) error {
-	defer s.Exit()
-	if err := s.Init(ctx); err != nil {
-		return err
-	}
 	select {
 	case <-ctx.Done():
+		ctxShutdown, cancel := context.WithTimeout(ctx, 1*time.Second)
+		defer cancel()
+		s.ps.WaitShutdown(ctxShutdown)
+		s.radioDaemon.WaitShutdown(ctxShutdown)
+		s.tunMan.WaitShutdown(ctxShutdown)
+		s.httpServerEntity.WaitShutdown(ctxShutdown)
 		return nil
 	}
-}
-
-func (s *Setup) Exit() error {
-	s.httpServerEntity.Stop()
-	return nil
 }

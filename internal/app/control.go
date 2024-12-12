@@ -23,10 +23,11 @@ import (
 )
 
 type HttpServerEntity struct {
-	srv   *http.Server
-	ps    *session.PduSessions
-	radio *radio.Radio
-	cli   *cli.Cli
+	srv    *http.Server
+	ps     *session.PduSessions
+	radio  *radio.Radio
+	cli    *cli.Cli
+	closed chan struct{}
 }
 
 func NewHttpServerEntity(bindAddr netip.AddrPort, r *radio.Radio, ps *session.PduSessions) *HttpServerEntity {
@@ -51,14 +52,15 @@ func NewHttpServerEntity(bindAddr netip.AddrPort, r *radio.Radio, ps *session.Pd
 			Addr:    bindAddr.String(),
 			Handler: h,
 		},
-		ps:    ps,
-		radio: r,
-		cli:   c,
+		ps:     ps,
+		radio:  r,
+		cli:    c,
+		closed: make(chan struct{}),
 	}
 	return &e
 }
 
-func (e *HttpServerEntity) Start() error {
+func (e *HttpServerEntity) Start(ctx context.Context) error {
 	l, err := net.Listen("tcp", e.srv.Addr)
 	if err != nil {
 		return err
@@ -69,14 +71,26 @@ func (e *HttpServerEntity) Start() error {
 			logrus.WithError(err).Error("Http Server error")
 		}
 	}(l)
+	go func(ctx context.Context) {
+		defer close(e.closed)
+		select {
+		case <-ctx.Done():
+			ctxTimeout, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+			defer cancel()
+			if err := e.srv.Shutdown(ctxTimeout); err != nil {
+				logrus.WithError(err).Info("HTTP Server Shutdown")
+			}
+		}
+	}(ctx)
 	return nil
 }
 
-func (e *HttpServerEntity) Stop() {
-	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second) // context.Background() is already Done()
-	defer cancel()
-	if err := e.srv.Shutdown(ctx); err != nil {
-		logrus.WithError(err).Info("HTTP Server Shutdown")
+func (e *HttpServerEntity) WaitShutdown(ctx context.Context) error {
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-e.closed:
+		return nil
 	}
 }
 

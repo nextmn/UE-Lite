@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"net/netip"
 	"strconv"
+	"sync"
 
 	"github.com/sirupsen/logrus"
 	"github.com/songgao/water"
@@ -21,34 +22,60 @@ const (
 )
 
 type TunManager struct {
-	ready bool
-	name  string
-	Tun   *water.Interface
+	ready  bool
+	name   string
+	tun    *water.Interface
+	closed chan struct{}
+	used   sync.WaitGroup
 }
 
 func NewTunManager() *TunManager {
-	return &TunManager{}
+	return &TunManager{
+		closed: make(chan struct{}),
+	}
+}
+
+// Get a tun interface.
+// Don't forget to run CloseTun when no longer in use
+func (t *TunManager) OpenTun() *water.Interface {
+	t.used.Add(1)
+	return t.tun
+}
+
+func (t *TunManager) CloseTun() {
+	t.used.Done()
 }
 
 func (t *TunManager) Start(ctx context.Context) error {
 	tun, err := newTunIface()
-	t.Tun = tun
+	t.tun = tun
 	if err != nil {
 		return err
 	}
 	t.ready = true
-	t.name = t.Tun.Name()
+	t.name = t.tun.Name()
 	go func(ctx context.Context) {
 		select {
 		case <-ctx.Done():
+			t.used.Wait() // Do not delete tun iface until all tuns are closed
 			err = runIPTables("-D", "OUTPUT", "-o", t.name, "-p", "icmp", "--icmp-type", "redirect", "-j", "DROP")
 			if err != nil {
 				logrus.WithError(err).WithFields(logrus.Fields{"interface": t.name}).Error("Error while removing iptables rules")
 				t.ready = false
+				close(t.closed)
 			}
 		}
 	}(ctx)
 	return err
+}
+
+func (t *TunManager) WaitShutdown(ctx context.Context) error {
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-t.closed:
+		return nil
+	}
 }
 
 func newTunIface() (*water.Interface, error) {

@@ -28,6 +28,7 @@ type RadioDaemon struct {
 	PsMan     *session.PduSessionsManager
 	UeRanAddr netip.AddrPort
 	tunMan    *tun.TunManager
+	closed    chan struct{}
 }
 
 func NewRadioDaemon(control jsonapi.ControlURI, gnbs []jsonapi.ControlURI, radio *Radio, psMan *session.PduSessionsManager, tunMan *tun.TunManager, ueRanAddr netip.AddrPort) *RadioDaemon {
@@ -38,6 +39,7 @@ func NewRadioDaemon(control jsonapi.ControlURI, gnbs []jsonapi.ControlURI, radio
 		PsMan:     psMan,
 		UeRanAddr: ueRanAddr,
 		tunMan:    tunMan,
+		closed:    make(chan struct{}),
 	}
 }
 
@@ -108,7 +110,15 @@ func (r *RadioDaemon) runUplinkDaemon(ctx context.Context, srv *net.UDPConn, ifa
 }
 
 func (r *RadioDaemon) Start(ctx context.Context) error {
-	ifacetun := r.tunMan.Tun
+	ifacetun := r.tunMan.OpenTun()
+	defer func(ctx context.Context) {
+		defer r.tunMan.CloseTun()
+		select {
+		case <-ctx.Done():
+			close(r.closed)
+			return
+		}
+	}(ctx)
 	srv, err := net.ListenUDP("udp", net.UDPAddrFromAddrPort(r.UeRanAddr))
 	if err != nil {
 		return err
@@ -142,4 +152,13 @@ func (r *RadioDaemon) Start(ctx context.Context) error {
 		}
 	}
 	return nil
+}
+
+func (r *RadioDaemon) WaitShutdown(ctx context.Context) error {
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-r.closed:
+		return nil
+	}
 }

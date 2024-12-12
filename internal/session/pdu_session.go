@@ -93,3 +93,8 @@ func (p *PduSessions) Start(ctx context.Context) error {
 	}
 	return nil
 }
+
+func (p *PduSessions) WaitShutdown(ctx context.Context) error {
+	// nothing to do
+	return nil
+}
