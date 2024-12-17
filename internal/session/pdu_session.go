@@ -26,6 +26,9 @@ type PduSessions struct {
 	UserAgent string
 	psMan     *PduSessionsManager
 	reqPs     []config.PDUSession
+
+	// not exported because must not be modified
+	ctx context.Context
 }
 
 func NewPduSessions(control jsonapi.ControlURI, psMan *PduSessionsManager, reqPs []config.PDUSession, userAgent string) *PduSessions {
@@ -38,7 +41,8 @@ func NewPduSessions(control jsonapi.ControlURI, psMan *PduSessionsManager, reqPs
 	}
 }
 
-func (p *PduSessions) InitEstablish(ctx context.Context, gnb jsonapi.ControlURI, dnn string) error {
+func (p *PduSessions) InitEstablish(gnb jsonapi.ControlURI, dnn string) error {
+	ctx := p.Context()
 	logrus.WithFields(logrus.Fields{
 		"gnb": gnb.String(),
 	}).Info("Creating new PDU Session")
@@ -80,14 +84,18 @@ func (p *PduSessions) EstablishmentAccept(c *gin.Context) {
 		"ip-addr": ps.Addr,
 	}).Info("New PDU Session")
 
-	p.psMan.CreatePduSession(ps.Addr, ps.Header.Gnb)
+	go p.psMan.CreatePduSession(ps.Addr, ps.Header.Gnb)
 
-	c.Status(http.StatusNoContent)
+	c.JSON(http.StatusAccepted, jsonapi.Message{Message: "please refer to logs for more information"})
 }
 
 func (p *PduSessions) Start(ctx context.Context) error {
+	if ctx == nil {
+		return ErrNilCtx
+	}
+	p.ctx = ctx
 	for _, ps := range p.reqPs {
-		if err := p.InitEstablish(ctx, ps.Gnb, ps.Dnn); err != nil {
+		if err := p.InitEstablish(ps.Gnb, ps.Dnn); err != nil {
 			return err
 		}
 	}
@@ -97,4 +105,11 @@ func (p *PduSessions) Start(ctx context.Context) error {
 func (p *PduSessions) WaitShutdown(ctx context.Context) error {
 	// nothing to do
 	return nil
+}
+
+func (p *PduSessions) Context() context.Context {
+	if p.ctx != nil {
+		return p.ctx
+	}
+	return context.Background()
 }

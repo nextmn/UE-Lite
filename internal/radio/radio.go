@@ -28,6 +28,9 @@ type Radio struct {
 	Control   jsonapi.ControlURI
 	Data      netip.AddrPort
 	UserAgent string
+
+	// not exported because must not be modified
+	ctx context.Context
 }
 
 func NewRadio(control jsonapi.ControlURI, data netip.AddrPort, userAgent string) *Radio {
@@ -52,7 +55,8 @@ func (r *Radio) Write(pkt []byte, srv *net.UDPConn, gnb jsonapi.ControlURI) erro
 	return err
 }
 
-func (r *Radio) InitPeer(ctx context.Context, gnb jsonapi.ControlURI) error {
+func (r *Radio) InitPeer(gnb jsonapi.ControlURI) error {
+	ctx := r.Context()
 	logrus.WithFields(logrus.Fields{
 		"gnb": gnb.String(),
 	}).Info("Creating radio link with a new gNB")
@@ -88,11 +92,29 @@ func (r *Radio) Peer(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, jsonapi.MessageWithError{Message: "could not deserialize", Error: err})
 		return
 	}
+	go r.HandlePeer(peer)
+	c.JSON(http.StatusAccepted, jsonapi.Message{Message: "please refer to logs for more information"})
+
+}
+
+func (r *Radio) HandlePeer(peer n1n2.RadioPeerMsg) {
 	r.peerMap.Store(peer.Control, peer.Data)
 	logrus.WithFields(logrus.Fields{
 		"peer-control": peer.Control.String(),
 		"peer-ran":     peer.Data,
 	}).Info("New peer radio link")
+}
 
-	c.Status(http.StatusNoContent)
+func (r *Radio) Context() context.Context {
+	if r.ctx != nil {
+		return r.ctx
+	}
+	return context.Background()
+}
+func (r *Radio) Init(ctx context.Context) error {
+	if ctx == nil {
+		return ErrNilCtx
+	}
+	r.ctx = ctx
+	return nil
 }

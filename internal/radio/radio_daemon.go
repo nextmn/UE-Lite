@@ -110,6 +110,9 @@ func (r *RadioDaemon) runUplinkDaemon(ctx context.Context, srv *net.UDPConn, ifa
 }
 
 func (r *RadioDaemon) Start(ctx context.Context) error {
+	if err := r.Radio.Init(ctx); err != nil {
+		return err
+	}
 	ifacetun := r.tunMan.OpenTun()
 	defer func(ctx context.Context) {
 		defer r.tunMan.CloseTun()
@@ -146,7 +149,7 @@ func (r *RadioDaemon) Start(ctx context.Context) error {
 		case <-ctx.Done():
 			return ctx.Err()
 		default:
-			if err := r.Radio.InitPeer(ctx, gnb); err != nil {
+			if err := r.Radio.InitPeer(gnb); err != nil {
 				return err
 			}
 		}

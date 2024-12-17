@@ -42,15 +42,19 @@ func (cli *Cli) RadioPeer(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, jsonapi.MessageWithError{Message: "could not deserialize", Error: err})
 		return
 	}
-	if err := cli.Radio.InitPeer(c, peer.Gnb); err != nil {
-		logrus.WithError(err).Error("could not perform radio peer init")
-		c.JSON(http.StatusInternalServerError, jsonapi.MessageWithError{Message: "could not perform radio peer init", Error: err})
+	go cli.HandleRadioPeer(peer)
+	c.JSON(http.StatusAccepted, jsonapi.Message{Message: "please refer to logs for more information"})
+}
+
+func (cli *Cli) HandleRadioPeer(peer CliPeerMsg) {
+	if err := cli.Radio.InitPeer(peer.Gnb); err != nil {
+		logrus.WithError(err).WithFields(logrus.Fields{
+			"gnb": peer.Gnb,
+			"dnn": peer.Dnn,
+		}).Error("Could not perform Radio Peer Init")
 		return
 	}
-
 	// TODO: handle gnb failure
-
-	c.Status(http.StatusNoContent)
 }
 
 func (cli *Cli) PsEstablish(c *gin.Context) {
@@ -60,15 +64,19 @@ func (cli *Cli) PsEstablish(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, jsonapi.MessageWithError{Message: "could not deserialize", Error: err})
 		return
 	}
-	// TODO: first, check if radio link is established
+	go cli.HandlePsEstablish(peer)
+	c.JSON(http.StatusAccepted, jsonapi.Message{Message: "please refer to logs for more information"})
+}
 
-	if err := cli.PduSessions.InitEstablish(c, peer.Gnb, peer.Dnn); err != nil {
-		logrus.WithError(err).Error("could not perform pdu session establishment")
-		c.JSON(http.StatusInternalServerError, jsonapi.MessageWithError{Message: "could not perform pdu session establishment", Error: err})
+func (cli *Cli) HandlePsEstablish(peer CliPeerMsg) {
+	// TODO: first, check if radio link is established
+	if err := cli.PduSessions.InitEstablish(peer.Gnb, peer.Dnn); err != nil {
+		logrus.WithError(err).WithFields(logrus.Fields{
+			"gnb": peer.Gnb,
+			"dnn": peer.Dnn,
+		}).Error("Could not perform PDU Session Establishment")
 		return
 	}
-
 	// TODO: handle gnb failure
 
-	c.Status(http.StatusNoContent)
 }
