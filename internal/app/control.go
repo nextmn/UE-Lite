@@ -37,8 +37,7 @@ func NewHttpServerEntity(bindAddr netip.AddrPort, r *radio.Radio, ps *session.Pd
 	h.GET("/status", Status)
 
 	// CLI
-	h.POST("/cli/radio/peer", c.RadioPeer)
-	h.POST("/cli/ps/establish", c.PsEstablish)
+	c.Register(h)
 
 	// Radio
 	h.POST("/radio/peer", r.Peer)
