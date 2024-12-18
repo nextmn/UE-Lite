@@ -10,7 +10,6 @@ import (
 	"net"
 	"net/netip"
 
-	"github.com/nextmn/ue-lite/internal/session"
 	"github.com/nextmn/ue-lite/internal/tun"
 
 	"github.com/nextmn/json-api/jsonapi"
@@ -24,20 +23,16 @@ type RadioDaemon struct {
 	Control   jsonapi.ControlURI
 	Gnbs      []jsonapi.ControlURI
 	Radio     *Radio
-	PsMan     *session.PduSessionsManager
 	UeRanAddr netip.AddrPort
-	tunMan    *tun.TunManager
 	closed    chan struct{}
 }
 
-func NewRadioDaemon(control jsonapi.ControlURI, gnbs []jsonapi.ControlURI, radio *Radio, psMan *session.PduSessionsManager, tunMan *tun.TunManager, ueRanAddr netip.AddrPort) *RadioDaemon {
+func NewRadioDaemon(control jsonapi.ControlURI, gnbs []jsonapi.ControlURI, radio *Radio, ueRanAddr netip.AddrPort) *RadioDaemon {
 	return &RadioDaemon{
 		Control:   control,
 		Gnbs:      gnbs,
 		Radio:     radio,
-		PsMan:     psMan,
 		UeRanAddr: ueRanAddr,
-		tunMan:    tunMan,
 		closed:    make(chan struct{}),
 	}
 }
@@ -77,44 +72,47 @@ func (r *RadioDaemon) runUplinkDaemon(ctx context.Context, srv *net.UDPConn, ifa
 		case <-ctx.Done():
 			return ctx.Err()
 		default:
-			buf := make([]byte, tun.TUN_MTU)
-			n, err := ifacetun.Read(buf)
-			if err != nil {
-				return err
-			}
-
-			// get UE IP Address
-			if !waterutil.IsIPv4(buf[:n]) {
-				return ErrUnsupportedPDUType
-			}
-			src, ok := netip.AddrFromSlice(waterutil.IPv4Source(buf[:n]).To4())
-			if !ok {
-				return ErrMalformedPDU
-			}
-
-			// get gNB linked to UE
-			gnb, err := r.PsMan.LinkedGnb(src)
-			if err != nil {
-				return err
-			}
-			if err := r.Radio.Write(buf[:n], srv, gnb); err == nil {
-				logrus.WithFields(
-					logrus.Fields{
-						"ip-addr": src,
-					}).Trace("Packet forwarded")
+			if err := r.handleUplinkPDU(srv, ifacetun); err != nil {
+				logrus.WithError(err).Trace("Packet dropped")
 			}
 		}
 	}
 	return nil
 }
 
+func (r *RadioDaemon) handleUplinkPDU(srv *net.UDPConn, ifacetun *water.Interface) error {
+	buf := make([]byte, tun.TUN_MTU)
+	n, err := ifacetun.Read(buf)
+	if err != nil {
+		return err
+	}
+
+	// get UE IP Address
+	if !waterutil.IsIPv4(buf[:n]) {
+		return ErrUnsupportedPDUType
+	}
+	src, ok := netip.AddrFromSlice(waterutil.IPv4Source(buf[:n]).To4())
+	if !ok {
+		return ErrMalformedPDU
+	}
+
+	if err := r.Radio.Write(buf[:n], srv, src); err == nil {
+		logrus.WithFields(
+			logrus.Fields{
+				"ip-addr": src,
+			}).Trace("Packet forwarded")
+	}
+	return err
+
+}
+
 func (r *RadioDaemon) Start(ctx context.Context) error {
 	if err := r.Radio.Init(ctx); err != nil {
 		return err
 	}
-	ifacetun := r.tunMan.OpenTun()
-	defer func(ctx context.Context) {
-		defer r.tunMan.CloseTun()
+	ifacetun := r.Radio.Tun.OpenTun()
+	go func(ctx context.Context) {
+		defer r.Radio.Tun.CloseTun()
 		select {
 		case <-ctx.Done():
 			close(r.closed)
@@ -137,10 +135,14 @@ func (r *RadioDaemon) Start(ctx context.Context) error {
 		return nil
 	}(ctx, srv)
 	go func(ctx context.Context, srv *net.UDPConn, ifacetun *water.Interface) {
-		r.runDownlinkDaemon(ctx, srv, ifacetun)
+		if err := r.runDownlinkDaemon(ctx, srv, ifacetun); err != nil {
+			logrus.WithError(err).Error("Radio Downlink Daemon stopped")
+		}
 	}(ctx, srv, ifacetun)
 	go func(ctx context.Context, srv *net.UDPConn, ifacetun *water.Interface) {
-		r.runUplinkDaemon(ctx, srv, ifacetun)
+		if err := r.runUplinkDaemon(ctx, srv, ifacetun); err != nil {
+			logrus.WithError(err).Error("Radio Uplink Daemon stopped")
+		}
 	}(ctx, srv, ifacetun)
 
 	for _, gnb := range r.Gnbs {

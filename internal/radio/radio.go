@@ -14,6 +14,8 @@ import (
 	"net/netip"
 	"sync"
 
+	"github.com/nextmn/ue-lite/internal/tun"
+
 	"github.com/nextmn/json-api/jsonapi"
 	"github.com/nextmn/json-api/jsonapi/n1n2"
 
@@ -22,28 +24,73 @@ import (
 )
 
 type Radio struct {
-	Client    http.Client
-	peerMap   sync.Map // key: gnb control uri ; value: gnb ran ip address
-	Control   jsonapi.ControlURI
-	Data      netip.AddrPort
-	UserAgent string
+	Client       http.Client
+	peerMap      sync.Map // key: gnb control uri (string); value: gnb ran ip address
+	routingTable sync.Map // key: ueIp; value gnb control uri
+	Tun          *tun.TunManager
+	Control      jsonapi.ControlURI
+	Data         netip.AddrPort
+	UserAgent    string
 
 	// not exported because must not be modified
 	ctx context.Context
 }
 
-func NewRadio(control jsonapi.ControlURI, data netip.AddrPort, userAgent string) *Radio {
+func NewRadio(control jsonapi.ControlURI, tunMan *tun.TunManager, data netip.AddrPort, userAgent string) *Radio {
 	return &Radio{
-		peerMap:   sync.Map{},
-		Client:    http.Client{},
-		Control:   control,
-		Data:      data,
-		UserAgent: userAgent,
+		peerMap:      sync.Map{},
+		routingTable: sync.Map{},
+		Client:       http.Client{},
+		Control:      control,
+		Data:         data,
+		UserAgent:    userAgent,
+		Tun:          tunMan,
 	}
 }
 
-func (r *Radio) Write(pkt []byte, srv *net.UDPConn, gnb jsonapi.ControlURI) error {
-	gnbRan, ok := r.peerMap.Load(gnb)
+// AddRoute creates a route to the gNB for this PDU session, including configuration of iproute2 interface
+func (r *Radio) AddRoute(ueIp netip.Addr, gnb jsonapi.ControlURI) error {
+	if _, ok := r.peerMap.Load(gnb.String()); !ok {
+		return ErrUnknownGnb
+	}
+	if _, loaded := r.routingTable.LoadOrStore(ueIp, gnb); loaded {
+		return ErrPduSessionAlreadyExists
+	}
+	return r.Tun.AddIp(ueIp)
+}
+
+// DelRoute remove the route to the gNB for this PDU session, including (de-)configuration of iproute2 interface
+func (r *Radio) DelRoute(ueIp netip.Addr) error {
+	r.routingTable.Delete(ueIp)
+	return r.Tun.DelIp(ueIp)
+}
+
+// UpdateRoute updates the route to the gNB for this PDU Session
+func (r *Radio) UpdateRoute(ueIp netip.Addr, oldGnb jsonapi.ControlURI, newGnb jsonapi.ControlURI) error {
+	if _, ok := r.peerMap.Load(newGnb.String()); !ok {
+		return ErrUnknownGnb
+	}
+	old, ok := r.routingTable.Load(ueIp)
+	if !ok {
+		return ErrPduSessionNotFound
+	}
+	oldT := old.(jsonapi.ControlURI)
+	if oldT.String() != oldGnb.String() {
+		return ErrUnexpectedGnb
+	}
+
+	r.routingTable.Store(ueIp, newGnb)
+	return nil
+}
+
+func (r *Radio) Write(pkt []byte, srv *net.UDPConn, ue netip.Addr) error {
+	gnb, ok := r.routingTable.Load(ue)
+	if !ok {
+		logrus.Trace("PDU Session not found for this IP Address")
+		return ErrPduSessionNotFound
+	}
+	gnbT := gnb.(jsonapi.ControlURI)
+	gnbRan, ok := r.peerMap.Load(gnbT.String())
 	if !ok {
 		logrus.Trace("Unknown gnb")
 		return ErrUnknownGnb

@@ -3,7 +3,7 @@
 // found in the LICENSE file.
 // SPDX-License-Identifier: MIT
 
-package radio
+package session
 
 import (
 	"net/http"
@@ -15,23 +15,21 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// Allow to peer to a gNB
-func (r *Radio) Peer(c *gin.Context) {
-	var peer n1n2.RadioPeerMsg
-	if err := c.BindJSON(&peer); err != nil {
+// get status of the controller
+func (p *PduSessions) EstablishmentAccept(c *gin.Context) {
+	var ps n1n2.PduSessionEstabAcceptMsg
+	if err := c.BindJSON(&ps); err != nil {
 		logrus.WithError(err).Error("could not deserialize")
 		c.JSON(http.StatusBadRequest, jsonapi.MessageWithError{Message: "could not deserialize", Error: err})
 		return
 	}
-	go r.HandlePeer(peer)
-	c.JSON(http.StatusAccepted, jsonapi.Message{Message: "please refer to logs for more information"})
 
-}
-
-func (r *Radio) HandlePeer(peer n1n2.RadioPeerMsg) {
-	r.peerMap.Store(peer.Control.String(), peer.Data)
 	logrus.WithFields(logrus.Fields{
-		"peer-control": peer.Control.String(),
-		"peer-ran":     peer.Data,
-	}).Info("New peer radio link")
+		"gnb":     ps.Header.Gnb.String(),
+		"ip-addr": ps.Addr,
+	}).Info("New PDU Session")
+
+	go p.CreatePduSession(ps.Addr, ps.Header.Gnb)
+
+	c.JSON(http.StatusAccepted, jsonapi.Message{Message: "please refer to logs for more information"})
 }

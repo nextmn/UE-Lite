@@ -6,27 +6,24 @@
 package radio
 
 import (
-	"encoding/json"
 	"net/http"
 	"net/netip"
 
-	"github.com/nextmn/json-api/jsonapi"
-
 	"github.com/gin-gonic/gin"
+	"github.com/sirupsen/logrus"
 )
 
 func (r *Radio) Status(c *gin.Context) {
-	peers := make(map[jsonapi.ControlURI]netip.Addr)
+	peers := make(map[string]netip.AddrPort)
 	r.peerMap.Range(func(key, value any) bool {
-		peers[key.(jsonapi.ControlURI)] = value.(netip.Addr)
+		peers[key.(string)] = value.(netip.AddrPort)
+		logrus.WithFields(logrus.Fields{
+			"key":   key.(string),
+			"value": value.(netip.AddrPort),
+		}).Trace("Creating radio/status response")
 		return true
 	})
-	j, err := json.Marshal(peers)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, jsonapi.MessageWithError{Message: "could not marshal peers map", Error: err})
-		return
-	}
 
 	c.Header("Cache-Control", "no-cache")
-	c.JSON(http.StatusOK, j)
+	c.JSON(http.StatusOK, peers)
 }

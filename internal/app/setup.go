@@ -13,6 +13,8 @@ import (
 	"github.com/nextmn/ue-lite/internal/radio"
 	"github.com/nextmn/ue-lite/internal/session"
 	"github.com/nextmn/ue-lite/internal/tun"
+
+	"github.com/sirupsen/logrus"
 )
 
 type Setup struct {
@@ -24,14 +26,13 @@ type Setup struct {
 }
 
 func NewSetup(config *config.UEConfig) *Setup {
-	r := radio.NewRadio(config.Control.Uri, config.Ran.BindAddr, "go-github-nextmn-ue-lite")
 	tunMan := tun.NewTunManager()
-	psMan := session.NewPduSessionsManager(tunMan)
-	ps := session.NewPduSessions(config.Control.Uri, psMan, config.Ran.PDUSessions, "go-github-nextmn-ue-lite")
+	r := radio.NewRadio(config.Control.Uri, tunMan, config.Ran.BindAddr, "go-github-nextmn-ue-lite")
+	ps := session.NewPduSessions(config.Control.Uri, r, config.Ran.PDUSessions, "go-github-nextmn-ue-lite")
 	return &Setup{
 		config:           config,
 		httpServerEntity: NewHttpServerEntity(config.Control.BindAddr, r, ps),
-		radioDaemon:      radio.NewRadioDaemon(config.Control.Uri, config.Ran.Gnbs, r, psMan, tunMan, config.Ran.BindAddr),
+		radioDaemon:      radio.NewRadioDaemon(config.Control.Uri, config.Ran.Gnbs, r, config.Ran.BindAddr),
 		ps:               ps,
 		tunMan:           tunMan,
 	}
@@ -44,12 +45,15 @@ func (s *Setup) Run(ctx context.Context) error {
 	if err := s.tunMan.Start(ctx); err != nil {
 		return err
 	}
+	logrus.Debug("TunMan started")
 	if err := s.radioDaemon.Start(ctx); err != nil {
 		return err
 	}
+	logrus.Debug("Radio Daemon started")
 	if err := s.ps.Start(ctx); err != nil {
 		return err
 	}
+	logrus.Debug("PsMan started")
 	select {
 	case <-ctx.Done():
 		ctxShutdown, cancel := context.WithTimeout(ctx, 1*time.Second)

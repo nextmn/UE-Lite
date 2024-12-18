@@ -10,8 +10,10 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"net/netip"
 
 	"github.com/nextmn/ue-lite/internal/config"
+	"github.com/nextmn/ue-lite/internal/radio"
 
 	"github.com/nextmn/json-api/jsonapi"
 	"github.com/nextmn/json-api/jsonapi/n1n2"
@@ -24,21 +26,26 @@ type PduSessions struct {
 	Control   jsonapi.ControlURI
 	Client    http.Client
 	UserAgent string
-	psMan     *PduSessionsManager
 	reqPs     []config.PDUSession
+	radio     *radio.Radio
 
 	// not exported because must not be modified
 	ctx context.Context
 }
 
-func NewPduSessions(control jsonapi.ControlURI, psMan *PduSessionsManager, reqPs []config.PDUSession, userAgent string) *PduSessions {
+func NewPduSessions(control jsonapi.ControlURI, r *radio.Radio, reqPs []config.PDUSession, userAgent string) *PduSessions {
 	return &PduSessions{
 		Client:    http.Client{},
 		Control:   control,
 		UserAgent: userAgent,
-		psMan:     psMan,
 		reqPs:     reqPs,
+		radio:     r,
 	}
+}
+
+func (p *PduSessions) Register(e *gin.Engine) {
+	e.POST("/ps/establishment-accept", p.EstablishmentAccept)
+	e.POST("/ps/handover-command", p.HandoverCommand)
 }
 
 func (p *PduSessions) InitEstablish(gnb jsonapi.ControlURI, dnn string) error {
@@ -70,30 +77,14 @@ func (p *PduSessions) InitEstablish(gnb jsonapi.ControlURI, dnn string) error {
 	return nil
 }
 
-// get status of the controller
-func (p *PduSessions) EstablishmentAccept(c *gin.Context) {
-	var ps n1n2.PduSessionEstabAcceptMsg
-	if err := c.BindJSON(&ps); err != nil {
-		logrus.WithError(err).Error("could not deserialize")
-		c.JSON(http.StatusBadRequest, jsonapi.MessageWithError{Message: "could not deserialize", Error: err})
-		return
-	}
-
-	logrus.WithFields(logrus.Fields{
-		"gnb":     ps.Header.Gnb.String(),
-		"ip-addr": ps.Addr,
-	}).Info("New PDU Session")
-
-	go p.psMan.CreatePduSession(ps.Addr, ps.Header.Gnb)
-
-	c.JSON(http.StatusAccepted, jsonapi.Message{Message: "please refer to logs for more information"})
-}
-
 func (p *PduSessions) Start(ctx context.Context) error {
 	if ctx == nil {
 		return ErrNilCtx
 	}
 	p.ctx = ctx
+	logrus.WithFields(logrus.Fields{
+		"number-of-pdu-sessions-requested": len(p.reqPs),
+	}).Info("Starting PDU Sessions Manager")
 	for _, ps := range p.reqPs {
 		if err := p.InitEstablish(ps.Gnb, ps.Dnn); err != nil {
 			return err
@@ -112,4 +103,27 @@ func (p *PduSessions) Context() context.Context {
 		return p.ctx
 	}
 	return context.Background()
+}
+
+func (p *PduSessions) DeletePduSession(ueIpAddr netip.Addr) error {
+	logrus.WithFields(logrus.Fields{
+		"ue-ip-addr": ueIpAddr,
+	}).Debug("Removing PDU Session")
+	return p.radio.DelRoute(ueIpAddr)
+}
+
+func (p *PduSessions) UpdatePduSession(ueIpAddr netip.Addr, oldGnb jsonapi.ControlURI, newGnb jsonapi.ControlURI) error {
+	logrus.WithFields(logrus.Fields{
+		"ue-ip-addr": ueIpAddr,
+		"old-gnb":    oldGnb.String(),
+		"new-gnb":    newGnb.String(),
+	}).Info("Updating PDU Session")
+	return p.radio.UpdateRoute(ueIpAddr, oldGnb, newGnb)
+}
+
+func (p *PduSessions) CreatePduSession(ueIpAddr netip.Addr, gnb jsonapi.ControlURI) error {
+	logrus.WithFields(logrus.Fields{
+		"ue-ip-addr": ueIpAddr,
+	}).Debug("Creating new PDU Session")
+	return p.radio.AddRoute(ueIpAddr, gnb)
 }
