@@ -10,7 +10,6 @@ import (
 	"net"
 	"net/netip"
 
-	"github.com/nextmn/ue-lite/internal/session"
 	"github.com/nextmn/ue-lite/internal/tun"
 
 	"github.com/nextmn/json-api/jsonapi"
@@ -24,20 +23,16 @@ type RadioDaemon struct {
 	Control   jsonapi.ControlURI
 	Gnbs      []jsonapi.ControlURI
 	Radio     *Radio
-	PsMan     *session.PduSessionsManager
 	UeRanAddr netip.AddrPort
-	tunMan    *tun.TunManager
 	closed    chan struct{}
 }
 
-func NewRadioDaemon(control jsonapi.ControlURI, gnbs []jsonapi.ControlURI, radio *Radio, psMan *session.PduSessionsManager, tunMan *tun.TunManager, ueRanAddr netip.AddrPort) *RadioDaemon {
+func NewRadioDaemon(control jsonapi.ControlURI, gnbs []jsonapi.ControlURI, radio *Radio, ueRanAddr netip.AddrPort) *RadioDaemon {
 	return &RadioDaemon{
 		Control:   control,
 		Gnbs:      gnbs,
 		Radio:     radio,
-		PsMan:     psMan,
 		UeRanAddr: ueRanAddr,
-		tunMan:    tunMan,
 		closed:    make(chan struct{}),
 	}
 }
@@ -92,12 +87,7 @@ func (r *RadioDaemon) runUplinkDaemon(ctx context.Context, srv *net.UDPConn, ifa
 				return ErrMalformedPDU
 			}
 
-			// get gNB linked to UE
-			gnb, err := r.PsMan.LinkedGnb(src)
-			if err != nil {
-				return err
-			}
-			if err := r.Radio.Write(buf[:n], srv, gnb); err == nil {
+			if err := r.Radio.Write(buf[:n], srv, src); err == nil {
 				logrus.WithFields(
 					logrus.Fields{
 						"ip-addr": src,
@@ -112,9 +102,9 @@ func (r *RadioDaemon) Start(ctx context.Context) error {
 	if err := r.Radio.Init(ctx); err != nil {
 		return err
 	}
-	ifacetun := r.tunMan.OpenTun()
+	ifacetun := r.Radio.Tun.OpenTun()
 	defer func(ctx context.Context) {
-		defer r.tunMan.CloseTun()
+		defer r.Radio.Tun.CloseTun()
 		select {
 		case <-ctx.Done():
 			close(r.closed)

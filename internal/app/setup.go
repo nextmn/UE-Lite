@@ -24,14 +24,13 @@ type Setup struct {
 }
 
 func NewSetup(config *config.UEConfig) *Setup {
-	r := radio.NewRadio(config.Control.Uri, config.Ran.BindAddr, "go-github-nextmn-ue-lite")
 	tunMan := tun.NewTunManager()
-	psMan := session.NewPduSessionsManager(tunMan)
-	ps := session.NewPduSessions(config.Control.Uri, psMan, config.Ran.PDUSessions, "go-github-nextmn-ue-lite")
+	r := radio.NewRadio(config.Control.Uri, tunMan, config.Ran.BindAddr, "go-github-nextmn-ue-lite")
+	ps := session.NewPduSessions(config.Control.Uri, r, config.Ran.PDUSessions, "go-github-nextmn-ue-lite")
 	return &Setup{
 		config:           config,
 		httpServerEntity: NewHttpServerEntity(config.Control.BindAddr, r, ps),
-		radioDaemon:      radio.NewRadioDaemon(config.Control.Uri, config.Ran.Gnbs, r, psMan, tunMan, config.Ran.BindAddr),
+		radioDaemon:      radio.NewRadioDaemon(config.Control.Uri, config.Ran.Gnbs, r, config.Ran.BindAddr),
 		ps:               ps,
 		tunMan:           tunMan,
 	}

@@ -10,6 +10,5 @@ import (
 )
 
 var (
-	ErrNilCtx             = errors.New("nil context")
-	ErrPduSessionNotFound = errors.New("No PDU Session found for this IP Address")
+	ErrNilCtx = errors.New("nil context")
 )
