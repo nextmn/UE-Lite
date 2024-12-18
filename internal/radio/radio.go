@@ -84,27 +84,6 @@ func (r *Radio) InitPeer(gnb jsonapi.ControlURI) error {
 	return nil
 }
 
-// Allow to peer to a gNB
-func (r *Radio) Peer(c *gin.Context) {
-	var peer n1n2.RadioPeerMsg
-	if err := c.BindJSON(&peer); err != nil {
-		logrus.WithError(err).Error("could not deserialize")
-		c.JSON(http.StatusBadRequest, jsonapi.MessageWithError{Message: "could not deserialize", Error: err})
-		return
-	}
-	go r.HandlePeer(peer)
-	c.JSON(http.StatusAccepted, jsonapi.Message{Message: "please refer to logs for more information"})
-
-}
-
-func (r *Radio) HandlePeer(peer n1n2.RadioPeerMsg) {
-	r.peerMap.Store(peer.Control, peer.Data)
-	logrus.WithFields(logrus.Fields{
-		"peer-control": peer.Control.String(),
-		"peer-ran":     peer.Data,
-	}).Info("New peer radio link")
-}
-
 func (r *Radio) Context() context.Context {
 	if r.ctx != nil {
 		return r.ctx
@@ -117,4 +96,9 @@ func (r *Radio) Init(ctx context.Context) error {
 	}
 	r.ctx = ctx
 	return nil
+}
+
+func (r *Radio) Register(e *gin.Engine) {
+	e.GET("/radio", r.Status)
+	e.POST("/radio/peer", r.Peer)
 }

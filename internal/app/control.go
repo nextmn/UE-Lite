@@ -40,7 +40,7 @@ func NewHttpServerEntity(bindAddr netip.AddrPort, r *radio.Radio, ps *session.Pd
 	c.Register(h)
 
 	// Radio
-	h.POST("/radio/peer", r.Peer)
+	r.Register(h)
 
 	// Pdu Session
 	h.POST("/ps/establishment-accept", ps.EstablishmentAccept)
