@@ -10,5 +10,11 @@ import (
 )
 
 var (
-	ErrNilCtx = errors.New("nil context")
+	ErrNilCtx      = errors.New("nil context")
+	ErrNilTunIface = errors.New("nil TUN interface")
+	ErrNilUdpConn  = errors.New("nil UDP Connection")
+	ErrUnknownGnb  = errors.New("Unknown gNB")
+
+	ErrUnsupportedPDUType = errors.New("Unsupported PDU Type")
+	ErrMalformedPDU       = errors.New("Malformed PDU")
 )

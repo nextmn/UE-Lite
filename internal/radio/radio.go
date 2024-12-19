@@ -9,7 +9,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
 	"net"
 	"net/http"
 	"net/netip"
@@ -47,7 +46,7 @@ func (r *Radio) Write(pkt []byte, srv *net.UDPConn, gnb jsonapi.ControlURI) erro
 	gnbRan, ok := r.peerMap.Load(gnb)
 	if !ok {
 		logrus.Trace("Unknown gnb")
-		return fmt.Errorf("Unknown gnb")
+		return ErrUnknownGnb
 	}
 
 	_, err := srv.WriteToUDPAddrPort(pkt, gnbRan.(netip.AddrPort))

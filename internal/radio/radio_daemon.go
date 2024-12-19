@@ -7,7 +7,6 @@ package radio
 
 import (
 	"context"
-	"fmt"
 	"net"
 	"net/netip"
 
@@ -45,10 +44,10 @@ func NewRadioDaemon(control jsonapi.ControlURI, gnbs []jsonapi.ControlURI, radio
 
 func (r *RadioDaemon) runDownlinkDaemon(ctx context.Context, srv *net.UDPConn, ifacetun *water.Interface) error {
 	if srv == nil {
-		return fmt.Errorf("nil srv")
+		return ErrNilUdpConn
 	}
 	if ifacetun == nil {
-		return fmt.Errorf("nil tun iface")
+		return ErrNilTunIface
 	}
 	for {
 		select {
@@ -68,10 +67,10 @@ func (r *RadioDaemon) runDownlinkDaemon(ctx context.Context, srv *net.UDPConn, i
 
 func (r *RadioDaemon) runUplinkDaemon(ctx context.Context, srv *net.UDPConn, ifacetun *water.Interface) error {
 	if srv == nil {
-		return fmt.Errorf("nil srv")
+		return ErrNilUdpConn
 	}
 	if ifacetun == nil {
-		return fmt.Errorf("nil tun iface")
+		return ErrNilTunIface
 	}
 	for {
 		select {
@@ -86,11 +85,11 @@ func (r *RadioDaemon) runUplinkDaemon(ctx context.Context, srv *net.UDPConn, ifa
 
 			// get UE IP Address
 			if !waterutil.IsIPv4(buf[:n]) {
-				return fmt.Errorf("not an IPv4 packet")
+				return ErrUnsupportedPDUType
 			}
 			src, ok := netip.AddrFromSlice(waterutil.IPv4Source(buf[:n]).To4())
 			if !ok {
-				return fmt.Errorf("error while retrieving ip addr")
+				return ErrMalformedPDU
 			}
 
 			// get gNB linked to UE
@@ -102,7 +101,7 @@ func (r *RadioDaemon) runUplinkDaemon(ctx context.Context, srv *net.UDPConn, ifa
 				logrus.WithFields(
 					logrus.Fields{
 						"ip-addr": src,
-					}).Trace("packet forwarded")
+					}).Trace("Packet forwarded")
 			}
 		}
 	}
@@ -128,7 +127,7 @@ func (r *RadioDaemon) Start(ctx context.Context) error {
 	}
 	go func(ctx context.Context, srv *net.UDPConn) error {
 		if srv == nil {
-			return fmt.Errorf("nil srv")
+			return ErrNilUdpConn
 		}
 		select {
 		case <-ctx.Done():

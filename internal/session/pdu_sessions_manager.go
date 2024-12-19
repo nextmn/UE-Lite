@@ -6,7 +6,6 @@
 package session
 
 import (
-	"fmt"
 	"net/netip"
 	"sync"
 
@@ -39,7 +38,7 @@ func (p *PduSessionsManager) LinkedGnb(src netip.Addr) (jsonapi.ControlURI, erro
 			logrus.Fields{
 				"ip-addr": src,
 			}).Trace("no pdu session found for this ip address")
-		return jsonapi.ControlURI{}, fmt.Errorf("no pdu session found for this ip address")
+		return jsonapi.ControlURI{}, ErrPduSessionNotFound
 	}
 	return gnb, nil
 
