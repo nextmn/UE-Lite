@@ -9,11 +9,12 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
 	"net"
 	"net/http"
 	"net/netip"
 	"sync"
+
+	"github.com/nextmn/ue-lite/internal/tun"
 
 	"github.com/nextmn/json-api/jsonapi"
 	"github.com/nextmn/json-api/jsonapi/n1n2"
@@ -23,31 +24,72 @@ import (
 )
 
 type Radio struct {
-	Client    http.Client
-	peerMap   sync.Map // key: gnb control uri ; value: gnb ran ip address
-	Control   jsonapi.ControlURI
-	Data      netip.AddrPort
-	UserAgent string
+	Client       http.Client
+	peerMap      sync.Map // key: gnb control uri ; value: gnb ran ip address
+	routingTable sync.Map // key: ueIp; value gnb control uri
+	Tun          *tun.TunManager
+	Control      jsonapi.ControlURI
+	Data         netip.AddrPort
+	UserAgent    string
 
 	// not exported because must not be modified
 	ctx context.Context
 }
 
-func NewRadio(control jsonapi.ControlURI, data netip.AddrPort, userAgent string) *Radio {
+func NewRadio(control jsonapi.ControlURI, tunMan *tun.TunManager, data netip.AddrPort, userAgent string) *Radio {
 	return &Radio{
-		peerMap:   sync.Map{},
-		Client:    http.Client{},
-		Control:   control,
-		Data:      data,
-		UserAgent: userAgent,
+		peerMap:      sync.Map{},
+		routingTable: sync.Map{},
+		Client:       http.Client{},
+		Control:      control,
+		Data:         data,
+		UserAgent:    userAgent,
+		Tun:          tunMan,
 	}
 }
 
-func (r *Radio) Write(pkt []byte, srv *net.UDPConn, gnb jsonapi.ControlURI) error {
+// AddRoute creates a route to the gNB for this PDU session, including configuration of iproute2 interface
+func (r *Radio) AddRoute(ueIp netip.Addr, gnb jsonapi.ControlURI) error {
+	if _, ok := r.peerMap.Load(gnb); !ok {
+		return ErrUnknownGnb
+	}
+	if _, loaded := r.routingTable.LoadOrStore(ueIp, gnb); loaded {
+		return ErrPduSessionAlreadyExists
+	}
+	return r.Tun.AddIp(ueIp)
+}
+
+// DelRoute remove the route to the gNB for this PDU session, including (de-)configuration of iproute2 interface
+func (r *Radio) DelRoute(ueIp netip.Addr) error {
+	r.routingTable.Delete(ueIp)
+	return r.Tun.DelIp(ueIp)
+}
+
+// UpdateRoute updates the route to the gNB for this PDU Session
+func (r *Radio) UpdateRoute(ueIp netip.Addr, oldGnb jsonapi.ControlURI, newGnb jsonapi.ControlURI) error {
+	if _, ok := r.peerMap.Load(newGnb); !ok {
+		return ErrUnknownGnb
+	}
+	if old, ok := r.routingTable.Load(ueIp); !ok {
+		return ErrPduSessionNotFound
+	} else if old != oldGnb {
+		return ErrUnexpectedGnb
+	}
+
+	r.routingTable.Store(ueIp, newGnb)
+	return nil
+}
+
+func (r *Radio) Write(pkt []byte, srv *net.UDPConn, ue netip.Addr) error {
+	gnb, ok := r.routingTable.Load(ue)
+	if !ok {
+		logrus.Trace("PDU Session not found for this IP Address")
+		return ErrPduSessionNotFound
+	}
 	gnbRan, ok := r.peerMap.Load(gnb)
 	if !ok {
 		logrus.Trace("Unknown gnb")
-		return fmt.Errorf("Unknown gnb")
+		return ErrUnknownGnb
 	}
 
 	_, err := srv.WriteToUDPAddrPort(pkt, gnbRan.(netip.AddrPort))
@@ -84,27 +126,6 @@ func (r *Radio) InitPeer(gnb jsonapi.ControlURI) error {
 	return nil
 }
 
-// Allow to peer to a gNB
-func (r *Radio) Peer(c *gin.Context) {
-	var peer n1n2.RadioPeerMsg
-	if err := c.BindJSON(&peer); err != nil {
-		logrus.WithError(err).Error("could not deserialize")
-		c.JSON(http.StatusBadRequest, jsonapi.MessageWithError{Message: "could not deserialize", Error: err})
-		return
-	}
-	go r.HandlePeer(peer)
-	c.JSON(http.StatusAccepted, jsonapi.Message{Message: "please refer to logs for more information"})
-
-}
-
-func (r *Radio) HandlePeer(peer n1n2.RadioPeerMsg) {
-	r.peerMap.Store(peer.Control, peer.Data)
-	logrus.WithFields(logrus.Fields{
-		"peer-control": peer.Control.String(),
-		"peer-ran":     peer.Data,
-	}).Info("New peer radio link")
-}
-
 func (r *Radio) Context() context.Context {
 	if r.ctx != nil {
 		return r.ctx
@@ -117,4 +138,9 @@ func (r *Radio) Init(ctx context.Context) error {
 	}
 	r.ctx = ctx
 	return nil
+}
+
+func (r *Radio) Register(e *gin.Engine) {
+	e.GET("/radio", r.Status)
+	e.POST("/radio/peer", r.Peer)
 }
