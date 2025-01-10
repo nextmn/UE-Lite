@@ -83,6 +83,19 @@ func (r *Radio) UpdateRoute(ueIp netip.Addr, oldGnb jsonapi.ControlURI, newGnb j
 	return nil
 }
 
+func (r *Radio) GetRoutes() map[netip.Addr]jsonapi.ControlURI {
+	sessions := make(map[netip.Addr]jsonapi.ControlURI)
+	r.routingTable.Range(func(key, value any) bool {
+		sessions[key.(netip.Addr)] = value.(jsonapi.ControlURI)
+		logrus.WithFields(logrus.Fields{
+			"key":   key.(netip.Addr),
+			"value": value.(jsonapi.ControlURI),
+		}).Trace("Creating ps/status response")
+		return true
+	})
+	return sessions
+}
+
 func (r *Radio) Write(pkt []byte, srv *net.UDPConn, ue netip.Addr) error {
 	gnb, ok := r.routingTable.Load(ue)
 	if !ok {
