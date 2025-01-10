@@ -44,6 +44,7 @@ func NewPduSessions(control jsonapi.ControlURI, r *radio.Radio, reqPs []config.P
 }
 
 func (p *PduSessions) Register(e *gin.Engine) {
+	e.GET("/ps", p.Status)
 	e.POST("/ps/establishment-accept", p.EstablishmentAccept)
 	e.POST("/ps/handover-command", p.HandoverCommand)
 }
