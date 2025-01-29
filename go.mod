@@ -5,7 +5,7 @@ go 1.22.7
 require (
 	github.com/adrg/xdg v0.5.3
 	github.com/gin-gonic/gin v1.10.0
-	github.com/nextmn/json-api v0.0.17
+	github.com/nextmn/json-api v0.0.18
 	github.com/nextmn/logrus-formatter v0.0.1
 	github.com/sirupsen/logrus v1.9.3
 	github.com/songgao/water v0.0.0-20200317203138-2b4b6d7c09d8

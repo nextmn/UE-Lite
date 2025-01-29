@@ -47,8 +47,8 @@ github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd h1:TRLaZ9cD/w
 github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd/go.mod h1:6dJC0mAP4ikYIbvyc7fijjWJddQyLn8Ig3JB5CqoB9Q=
 github.com/modern-go/reflect2 v1.0.2 h1:xBagoLtFs94CBntxluKeaWgTMpvLxC4ur3nMaC9Gz0M=
 github.com/modern-go/reflect2 v1.0.2/go.mod h1:yWuevngMOJpCy52FWWMvUC8ws7m/LJsjYzDa0/r8luk=
-github.com/nextmn/json-api v0.0.17 h1:u8Q32fxy7xh1XCGG/QrtZIN/8NVDU6Q9W8CnaMZdZq0=
-github.com/nextmn/json-api v0.0.17/go.mod h1:CQXeNPj9MDGsEExtnqJFIGjLgZAKsmOoO2fy+mep7Ak=
+github.com/nextmn/json-api v0.0.18 h1:hycFbmsZp1xvJu88TqQsDcLi8Be7Ycd53xBwnGLp+oQ=
+github.com/nextmn/json-api v0.0.18/go.mod h1:CQXeNPj9MDGsEExtnqJFIGjLgZAKsmOoO2fy+mep7Ak=
 github.com/nextmn/logrus-formatter v0.0.1 h1:Bsf78jjiEESc+rV8xE6IyKj4frDPGMwXFNrLQzm6A1E=
 github.com/nextmn/logrus-formatter v0.0.1/go.mod h1:vdSZ+sIcSna8vjbXkSFxsnsKHqRwaUEed4JCPcXoGyM=
 github.com/pelletier/go-toml/v2 v2.2.3 h1:YmeHyLY8mFWbdkNWwpr+qIL2bEqT0o95WSdkNHvL12M=
