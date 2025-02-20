@@ -14,6 +14,7 @@ import (
 	"net/netip"
 	"sync"
 
+	"github.com/nextmn/ue-lite/internal/common"
 	"github.com/nextmn/ue-lite/internal/tun"
 
 	"github.com/nextmn/json-api/jsonapi"
@@ -24,6 +25,8 @@ import (
 )
 
 type Radio struct {
+	common.WithContext
+
 	Client       http.Client
 	peerMap      sync.Map // key: gnb control uri (string); value: gnb ran ip address
 	routingTable sync.Map // key: ueIp; value gnb control uri
@@ -140,20 +143,6 @@ func (r *Radio) InitPeer(gnb jsonapi.ControlURI) error {
 		return err
 	}
 	defer resp.Body.Close()
-	return nil
-}
-
-func (r *Radio) Context() context.Context {
-	if r.ctx != nil {
-		return r.ctx
-	}
-	return context.Background()
-}
-func (r *Radio) Init(ctx context.Context) error {
-	if ctx == nil {
-		return ErrNilCtx
-	}
-	r.ctx = ctx
 	return nil
 }
 

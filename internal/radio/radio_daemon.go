@@ -107,7 +107,7 @@ func (r *RadioDaemon) handleUplinkPDU(srv *net.UDPConn, ifacetun *water.Interfac
 }
 
 func (r *RadioDaemon) Start(ctx context.Context) error {
-	if err := r.Radio.Init(ctx); err != nil {
+	if err := r.Radio.InitContext(ctx); err != nil {
 		return err
 	}
 	ifacetun := r.Radio.Tun.OpenTun()

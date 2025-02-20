@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"net/netip"
 
+	"github.com/nextmn/ue-lite/internal/common"
 	"github.com/nextmn/ue-lite/internal/config"
 	"github.com/nextmn/ue-lite/internal/radio"
 
@@ -23,14 +24,13 @@ import (
 )
 
 type PduSessions struct {
+	common.WithContext
+
 	Control   jsonapi.ControlURI
 	Client    http.Client
 	UserAgent string
 	reqPs     []config.PDUSession
 	radio     *radio.Radio
-
-	// not exported because must not be modified
-	ctx context.Context
 }
 
 func NewPduSessions(control jsonapi.ControlURI, r *radio.Radio, reqPs []config.PDUSession, userAgent string) *PduSessions {
@@ -79,10 +79,9 @@ func (p *PduSessions) InitEstablish(gnb jsonapi.ControlURI, dnn string) error {
 }
 
 func (p *PduSessions) Start(ctx context.Context) error {
-	if ctx == nil {
-		return ErrNilCtx
+	if err := p.InitContext(ctx); err != nil {
+		return err
 	}
-	p.ctx = ctx
 	logrus.WithFields(logrus.Fields{
 		"number-of-pdu-sessions-requested": len(p.reqPs),
 	}).Info("Starting PDU Sessions Manager")
@@ -97,13 +96,6 @@ func (p *PduSessions) Start(ctx context.Context) error {
 func (p *PduSessions) WaitShutdown(ctx context.Context) error {
 	// nothing to do
 	return nil
-}
-
-func (p *PduSessions) Context() context.Context {
-	if p.ctx != nil {
-		return p.ctx
-	}
-	return context.Background()
 }
 
 func (p *PduSessions) DeletePduSession(ueIpAddr netip.Addr) error {
