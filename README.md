@@ -35,7 +35,7 @@ devices:
 ```
 
 ## Author
-Louis Royer
+Louis Royer and the NextMN Contributors
 
 ## Licence
 MIT
