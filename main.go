@@ -47,10 +47,10 @@ func main() {
 				Usage:     "load configuration from `FILE`",
 				// XXX: https://github.com/urfave/cli/issues/2244
 				// Required:    true,
-				DefaultText: "${XDG_CONFIG_DIRS}/nextmn-gnb-lite/config.yaml",
+				DefaultText: "${XDG_CONFIG_DIRS}/nextmn-ue-lite/config.yaml",
 				Sources: cli.NewValueSourceChain(
 					cli.EnvVar("CONFIG_FILE"),
-					clixdg.ConfigFile("nextmn-gnb-lite/config.yaml"),
+					clixdg.ConfigFile("nextmn-ue-lite/config.yaml"),
 				),
 			},
 		},
