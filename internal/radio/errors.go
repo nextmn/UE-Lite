@@ -12,11 +12,11 @@ import (
 var (
 	ErrNilTunIface             = errors.New("nil TUN interface")
 	ErrNilUdpConn              = errors.New("nil UDP Connection")
-	ErrUnknownGnb              = errors.New("Unknown gNB")
+	ErrUnknownGnb              = errors.New("unknown gNB")
 	ErrUnexpectedGnb           = errors.New("PDU session do not use the expected gNB")
-	ErrPduSessionNotFound      = errors.New("No PDU Session found for this IP Address")
+	ErrPduSessionNotFound      = errors.New("no PDU Session found for this IP Address")
 	ErrPduSessionAlreadyExists = errors.New("PDU session already exists")
 
-	ErrUnsupportedPDUType = errors.New("Unsupported PDU Type")
-	ErrMalformedPDU       = errors.New("Malformed PDU")
+	ErrUnsupportedPDUType = errors.New("unsupported PDU Type")
+	ErrMalformedPDU       = errors.New("malformed PDU")
 )

@@ -18,7 +18,7 @@ func runIP(args ...string) error {
 	cmd.Stdout = os.Stdout
 	cmd.Stdin = os.Stdin
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("Error running %s: %s", cmd.Args, err)
+		return fmt.Errorf("error running %s: %w", cmd.Args, err)
 	}
 	return nil
 }
@@ -30,7 +30,7 @@ func runIPTables(args ...string) error {
 	cmd.Stdout = os.Stdout
 	cmd.Stdin = os.Stdin
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("Error running %s: %s", cmd.Args, err)
+		return fmt.Errorf("error running %s: %w", cmd.Args, err)
 	}
 	return nil
 }

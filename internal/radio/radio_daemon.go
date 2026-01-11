@@ -111,13 +111,11 @@ func (r *RadioDaemon) Start(ctx context.Context) error {
 		return err
 	}
 	ifacetun := r.Radio.Tun.OpenTun()
-	go func(ctx context.Context) {
+	go func(ctx context.Context) error {
 		defer r.Radio.Tun.CloseTun()
-		select {
-		case <-ctx.Done():
-			close(r.closed)
-			return
-		}
+		<-ctx.Done()
+		close(r.closed)
+		return ctx.Err()
 	}(ctx)
 	srv, err := net.ListenUDP("udp", net.UDPAddrFromAddrPort(r.UeRanAddr))
 	if err != nil {
@@ -127,12 +125,9 @@ func (r *RadioDaemon) Start(ctx context.Context) error {
 		if srv == nil {
 			return ErrNilUdpConn
 		}
-		select {
-		case <-ctx.Done():
-			srv.Close()
-			return ctx.Err()
-		}
-		return nil
+		<-ctx.Done()
+		srv.Close()
+		return ctx.Err()
 	}(ctx, srv)
 	go func(ctx context.Context, srv *net.UDPConn, ifacetun *water.Interface) {
 		if err := r.runDownlinkDaemon(ctx, srv, ifacetun); err != nil {

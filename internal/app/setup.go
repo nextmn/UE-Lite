@@ -54,14 +54,12 @@ func (s *Setup) Run(ctx context.Context) error {
 		return err
 	}
 	logrus.Debug("PsMan started")
-	select {
-	case <-ctx.Done():
-		ctxShutdown, cancel := context.WithTimeout(ctx, 1*time.Second)
-		defer cancel()
-		s.ps.WaitShutdown(ctxShutdown)
-		s.radioDaemon.WaitShutdown(ctxShutdown)
-		s.tunMan.WaitShutdown(ctxShutdown)
-		s.httpServerEntity.WaitShutdown(ctxShutdown)
-		return nil
-	}
+	<-ctx.Done()
+	ctxShutdown, cancel := context.WithTimeout(ctx, 1*time.Second)
+	defer cancel()
+	s.ps.WaitShutdown(ctxShutdown)
+	s.radioDaemon.WaitShutdown(ctxShutdown)
+	s.tunMan.WaitShutdown(ctxShutdown)
+	s.httpServerEntity.WaitShutdown(ctxShutdown)
+	return nil
 }

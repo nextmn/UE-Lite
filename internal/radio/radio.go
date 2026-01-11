@@ -7,7 +7,6 @@ package radio
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"net"
 	"net/http"
@@ -34,9 +33,6 @@ type Radio struct {
 	Control      jsonapi.ControlURI
 	Data         netip.AddrPort
 	UserAgent    string
-
-	// not exported because must not be modified
-	ctx context.Context
 }
 
 func NewRadio(control jsonapi.ControlURI, tunMan *tun.TunManager, data netip.AddrPort, userAgent string) *Radio {
