@@ -47,27 +47,31 @@ func (t *TunManager) CloseTun() {
 }
 
 func (t *TunManager) Start(ctx context.Context) error {
-	tun, err := newTunIface()
+	tun, err := newTunIface(ctx)
 	t.tun = tun
 	if err != nil {
 		return err
 	}
-	t.ready = true
 	t.name = t.tun.Name()
+	t.ready = true
 	go func(ctx context.Context) {
 		<-ctx.Done()
 		t.used.Wait() // Do not delete tun iface until all tuns are closed
-		err = runIPTables("-D", "OUTPUT", "-o", t.name, "-p", "icmp", "--icmp-type", "redirect", "-j", "DROP")
-		if err != nil {
+
+		ctxDel := context.WithoutCancel(ctx) // required to force cleanup
+		if err := runIPTables(ctxDel, "-D", "OUTPUT", "-o", t.name, "-p", "icmp", "--icmp-type", "redirect", "-j", "DROP"); err != nil {
 			logrus.WithError(err).WithFields(logrus.Fields{"interface": t.name}).Error("Error while removing iptables rules")
-			t.ready = false
-			close(t.closed)
 		}
+		t.ready = false
+		close(t.closed)
 	}(ctx)
 	return err
 }
 
 func (t *TunManager) WaitShutdown(ctx context.Context) error {
+	if !t.ready {
+		return nil
+	}
 	select {
 	case <-ctx.Done():
 		return ctx.Err()
@@ -76,49 +80,45 @@ func (t *TunManager) WaitShutdown(ctx context.Context) error {
 	}
 }
 
-func newTunIface() (*water.Interface, error) {
+func newTunIface(ctx context.Context) (*water.Interface, error) {
 	config := water.Config{
 		DeviceType: water.TUN,
 	}
 	config.Name = TUN_NAME
 	iface, err := water.New(config)
-	if nil != err {
+	if err != nil {
 		logrus.WithError(err).Error("Unable to allocate TUN interface")
 		return nil, err
 	}
-	err = runIP("link", "set", "dev", iface.Name(), "mtu", strconv.Itoa(TUN_MTU))
-	if nil != err {
+	if err := runIP(ctx, "link", "set", "dev", iface.Name(), "mtu", strconv.Itoa(TUN_MTU)); err != nil {
 		logrus.WithError(err).WithFields(logrus.Fields{
 			"mtu":       TUN_MTU,
 			"interface": iface.Name(),
 		}).Error("Unable to set MTU")
 		return nil, err
 	}
-	err = runIP("link", "set", "dev", iface.Name(), "up")
-	if nil != err {
+	if err := runIP(ctx, "link", "set", "dev", iface.Name(), "up"); err != nil {
 		logrus.WithError(err).WithFields(logrus.Fields{
 			"interface": iface.Name(),
 		}).Error("Unable to set interface up")
 		return nil, err
 	}
 	// TODO: add proto "nextmn-lite-ue"
-	err = runIP("route", "replace", "default", "dev", iface.Name())
-	if nil != err {
+	if err := runIP(ctx, "route", "replace", "default", "dev", iface.Name()); err != nil {
 		logrus.WithError(err).WithFields(logrus.Fields{
 			"interface": iface.Name(),
 		}).Error("Unable to set default route")
 		return nil, err
 	}
-	err = runIPTables("-A", "OUTPUT", "-o", iface.Name(), "-p", "icmp", "--icmp-type", "redirect", "-j", "DROP")
-	if err != nil {
+	if err := runIPTables(ctx, "-A", "OUTPUT", "-o", iface.Name(), "-p", "icmp", "--icmp-type", "redirect", "-j", "DROP"); err != nil {
 		logrus.WithError(err).WithFields(logrus.Fields{"interface": iface.Name()}).Error("Error while setting iptable rule to drop icmp redirects")
 		return nil, err
 	}
 	return iface, nil
 }
 
-func (t *TunManager) DelIp(ip netip.Addr) error {
-	if err := runIP("addr", "del", fmt.Sprintf("%s/%d", ip.String(), ip.BitLen()), "dev", TUN_NAME); err != nil {
+func (t *TunManager) DelIp(ctx context.Context, ip netip.Addr) error {
+	if err := runIP(ctx, "addr", "del", fmt.Sprintf("%s/%d", ip.String(), ip.BitLen()), "dev", TUN_NAME); err != nil {
 		logrus.WithError(err).WithFields(logrus.Fields{
 			"ue-ip-addr": ip,
 			"dev":        TUN_NAME,
@@ -127,8 +127,8 @@ func (t *TunManager) DelIp(ip netip.Addr) error {
 	}
 	return nil
 }
-func (t *TunManager) AddIp(ip netip.Addr) error {
-	if err := runIP("addr", "add", fmt.Sprintf("%s/%d", ip.String(), ip.BitLen()), "dev", TUN_NAME); err != nil {
+func (t *TunManager) AddIp(ctx context.Context, ip netip.Addr) error {
+	if err := runIP(ctx, "addr", "add", fmt.Sprintf("%s/%d", ip.String(), ip.BitLen()), "dev", TUN_NAME); err != nil {
 		logrus.WithError(err).WithFields(logrus.Fields{
 			"ue-ip-addr": ip,
 			"dev":        TUN_NAME,

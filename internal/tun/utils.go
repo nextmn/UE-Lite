@@ -6,17 +6,15 @@
 package tun
 
 import (
+	"context"
 	"fmt"
-	"os"
 	"os/exec"
 )
 
 // Run ip command
-func runIP(args ...string) error {
-	cmd := exec.Command("ip", args...)
-	cmd.Stderr = os.Stderr
-	cmd.Stdout = os.Stdout
-	cmd.Stdin = os.Stdin
+func runIP(ctx context.Context, args ...string) error {
+	cmd := exec.CommandContext(ctx, "ip", args...)
+	cmd.Env = []string{}
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("error running %s: %w", cmd.Args, err)
 	}
@@ -24,11 +22,9 @@ func runIP(args ...string) error {
 }
 
 // Run iptables command
-func runIPTables(args ...string) error {
-	cmd := exec.Command("iptables", args...)
-	cmd.Stderr = os.Stderr
-	cmd.Stdout = os.Stdout
-	cmd.Stdin = os.Stdin
+func runIPTables(ctx context.Context, args ...string) error {
+	cmd := exec.CommandContext(ctx, "iptables", args...)
+	cmd.Env = []string{}
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("error running %s: %w", cmd.Args, err)
 	}

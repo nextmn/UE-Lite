@@ -55,13 +55,13 @@ func (r *Radio) AddRoute(ueIp netip.Addr, gnb jsonapi.ControlURI) error {
 	if _, loaded := r.routingTable.LoadOrStore(ueIp, gnb); loaded {
 		return ErrPduSessionAlreadyExists
 	}
-	return r.Tun.AddIp(ueIp)
+	return r.Tun.AddIp(r.Context(), ueIp)
 }
 
 // DelRoute remove the route to the gNB for this PDU session, including (de-)configuration of iproute2 interface
 func (r *Radio) DelRoute(ueIp netip.Addr) error {
 	r.routingTable.Delete(ueIp)
-	return r.Tun.DelIp(ueIp)
+	return r.Tun.DelIp(r.Context(), ueIp)
 }
 
 // UpdateRoute updates the route to the gNB for this PDU Session

@@ -57,7 +57,6 @@ func (r *RadioDaemon) runDownlinkDaemon(ctx context.Context, srv *net.UDPConn, i
 			ifacetun.Write(buf[:n])
 		}
 	}
-	return nil
 }
 
 func (r *RadioDaemon) runUplinkDaemon(ctx context.Context, srv *net.UDPConn, ifacetun *water.Interface) error {
@@ -77,7 +76,6 @@ func (r *RadioDaemon) runUplinkDaemon(ctx context.Context, srv *net.UDPConn, ifa
 			}
 		}
 	}
-	return nil
 }
 
 func (r *RadioDaemon) handleUplinkPDU(srv *net.UDPConn, ifacetun *water.Interface) error {

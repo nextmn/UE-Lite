@@ -38,28 +38,47 @@ func NewSetup(config *config.UEConfig) *Setup {
 	}
 }
 
+func (s *Setup) waitShutdown(ctx context.Context) {
+	if s.ps != nil {
+		s.ps.WaitShutdown(ctx)
+	}
+	if s.radioDaemon != nil {
+		s.radioDaemon.WaitShutdown(ctx)
+	}
+	if s.tunMan != nil {
+		s.tunMan.WaitShutdown(ctx)
+	}
+	if s.httpServerEntity != nil {
+		s.httpServerEntity.WaitShutdown(ctx)
+	}
+}
+
 func (s *Setup) Run(ctx context.Context) error {
+	defer func() {
+		ctxShutdown, cancel := context.WithTimeout(context.WithoutCancel(ctx), 1*time.Second)
+		defer cancel()
+		s.waitShutdown(ctxShutdown)
+	}()
+
 	if err := s.httpServerEntity.Start(ctx); err != nil {
 		return err
 	}
+
 	if err := s.tunMan.Start(ctx); err != nil {
 		return err
 	}
 	logrus.Debug("TunMan started")
+
 	if err := s.radioDaemon.Start(ctx); err != nil {
 		return err
 	}
 	logrus.Debug("Radio Daemon started")
+
 	if err := s.ps.Start(ctx); err != nil {
 		return err
 	}
 	logrus.Debug("PsMan started")
+
 	<-ctx.Done()
-	ctxShutdown, cancel := context.WithTimeout(ctx, 1*time.Second)
-	defer cancel()
-	s.ps.WaitShutdown(ctxShutdown)
-	s.radioDaemon.WaitShutdown(ctxShutdown)
-	s.tunMan.WaitShutdown(ctxShutdown)
-	s.httpServerEntity.WaitShutdown(ctxShutdown)
 	return nil
 }
