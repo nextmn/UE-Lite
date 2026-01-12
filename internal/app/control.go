@@ -34,9 +34,7 @@ type HttpServerEntity struct {
 func NewHttpServerEntity(bindAddr netip.AddrPort, r *radio.Radio, ps *session.PduSessions) *HttpServerEntity {
 	c := cli.NewCli(r, ps)
 	gin.SetMode(gin.ReleaseMode)
-	h := gin.New()
-	h.Use(gin.Recovery())
-	h.Use(ginlogger.LoggingMiddleware)
+	h := ginlogger.Default()
 	h.GET("/status", Status)
 
 	// CLI
