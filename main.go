@@ -41,12 +41,10 @@ func main() {
 		Version: version,
 		Flags: []cli.Flag{
 			&cli.StringFlag{
-				Name:      "config",
-				TakesFile: true,
-				Aliases:   []string{"c"},
-				Usage:     "load configuration from `FILE`",
-				// XXX: https://github.com/urfave/cli/issues/2244
-				// Required:    true,
+				Name:        "config",
+				TakesFile:   true,
+				Aliases:     []string{"c"},
+				Usage:       "load configuration from `FILE`, unless $CONFIG is set",
 				DefaultText: "${XDG_CONFIG_DIRS}/nextmn-ue-lite/config.yaml",
 				Sources: cli.NewValueSourceChain(
 					cli.EnvVar("CONFIG_FILE"),
@@ -60,11 +58,6 @@ func main() {
 				Name:  "run",
 				Usage: "Runs the UE",
 				Action: func(ctx context.Context, cmd *cli.Command) error {
-					// XXX: https://github.com/urfave/cli/issues/2244
-					if cmd.String("config") == "" {
-						logrus.Fatal("Required flag \"config\" not set")
-					}
-
 					conf, err := config.ParseConf(cmd.String("config"))
 					if err != nil {
 						logrus.WithContext(ctx).WithError(err).Fatal("Error loading config, exiting…")
@@ -83,11 +76,6 @@ func main() {
 				Name:  "healthcheck",
 				Usage: "Checks status of the node",
 				Action: func(ctx context.Context, cmd *cli.Command) error {
-					// XXX: https://github.com/urfave/cli/issues/2244
-					if cmd.String("config") == "" {
-						logrus.Fatal("Required flag \"config\" not set")
-					}
-
 					conf, err := config.ParseConf(cmd.String("config"))
 					if err != nil {
 						logrus.WithContext(ctx).WithError(err).Fatal("Error loading config, exiting…")

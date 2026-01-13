@@ -6,6 +6,7 @@
 package config
 
 import (
+	"errors"
 	"net/netip"
 	"os"
 	"path/filepath"
@@ -15,8 +16,20 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+var ErrEmptyConfigFilepath = errors.New("`$CONFIG` is not set, `config` flag is not set, and default config file does not exist")
+
 func ParseConf(file string) (*UEConfig, error) {
 	var conf UEConfig
+	if v, ok := os.LookupEnv("CONFIG"); ok {
+		err := yaml.Unmarshal([]byte(v), &conf)
+		if err != nil {
+			return nil, err
+		}
+		return &conf, nil
+	}
+	if file == "" {
+		return nil, ErrEmptyConfigFilepath
+	}
 	path, err := filepath.Abs(file)
 	if err != nil {
 		return nil, err

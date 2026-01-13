@@ -1,0 +1,13 @@
+*.swp
+.gitignore
+.github
+.pre-commit-config.yaml
+config
+LICENSE
+Makefile
+README.md
+ue-lite
+Dockerfile
+.dockerignore
+
+# make sure to not ignore .git: it is required to have the right version displayed
