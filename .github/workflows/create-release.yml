@@ -28,7 +28,7 @@ jobs:
         run: echo "version=$(echo ${{ github.ref_name }} | cut -c2- -)" >> $GITHUB_OUTPUT
       - name: Get name of repo
         id: repo
-        run: echo "repo=$(echo ${{ github.repository }} | cut -d/ -f2)" >> $GITHUB_OUTPUT
+        run: echo "repo=$(echo ${{ github.repository }} | cut -d/ -f2) | tr '[:upper:]' '[:lower:]'" >> $GITHUB_OUTPUT
       - name: Setup Go
         uses: actions/setup-go@v6
         with:
@@ -36,16 +36,16 @@ jobs:
       - name: Install depends
         run: go get .
       - name: Build
-        run: go build -v -o ${{ steps.repo.output.repo }}-${{ steps.version.outputs.version }}-${{ matrix.os }}-${{ matrix.arch }}
+        run: go build -v -o ${{ steps.repo.outputs.repo }}-${{ steps.version.outputs.version }}-${{ matrix.os }}-${{ matrix.arch }}
       - name: Generate artifact attestation
         uses: actions/attest-build-provenance@v3
         with:
-          subject-path: ${{ steps.repo.output.repo }}*
+          subject-path: ${{ steps.repo.outputs.repo }}*
       - name: Upload build artifact
         uses: actions/upload-artifact@v6
         with:
-          name: ${{ steps.repo.output.repo }}-${{ steps.version.outputs.version }}-${{ matrix.os }}-${{ matrix.arch }}
-          path: ${{ steps.repo.output.repo }}*
+          name: ${{ steps.repo.outputs.repo }}-${{ steps.version.outputs.version }}-${{ matrix.os }}-${{ matrix.arch }}
+          path: ${{ steps.repo.outputs.repo }}*
   docker-image:
     runs-on: ubuntu-latest
     steps:
@@ -62,6 +62,9 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: "ghcr.io/${{ github.repository }}"
+      - name: Get Git commit timestamps
+        id: timestamp
+        run: echo "timestamp=$(git log -1 --pretty=%ct)" >> $GITHUB_OUTPUT
       - name: Build and push image
         uses: docker/build-push-action@v6
         with:
@@ -69,8 +72,12 @@ jobs:
           sbom: true
           push: true
           tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          annotations: ${{ steps.meta.outputs.annotations }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+        env:
+          SOURCE_DATE_EPOCH: ${{ steps.timestamp.outputs.timestamp }}
   release:
     runs-on: ubuntu-latest
     needs: [build-release, docker-image]
@@ -82,10 +89,14 @@ jobs:
       - name: Get version number
         id: version
         run: echo "version=$(echo ${{ github.ref_name }} | cut -c2- -)" >> $GITHUB_OUTPUT
+      - name: Get name of repo
+        id: repo
+        run: echo "repo=$(echo ${{ github.repository }} | cut -d/ -f2) | tr '[:upper:]' '[:lower:]'" >> $GITHUB_OUTPUT
       - name: Release
         uses: ncipollo/release-action@v1
         with:
           generateReleaseNotes: true
           makeLatest: "legacy"
           name: "Version ${{ steps.version.outputs.version }}"
+          artifacts: "${{ steps.repo.outputs.repo }}-${{ steps.version.outputs.version }}*"
           immutableCreate: true
