@@ -71,6 +71,8 @@ jobs:
         with:
           labels: "org.opencontainers.image.created=${{ steps.iso8601.outputs.iso8601 }}"
           images: "ghcr.io/${{ github.repository }}"
+          tags: |
+            type=semver,pattern={{version}}
       - name: Build and push image
         uses: docker/build-push-action@v6
         with:
