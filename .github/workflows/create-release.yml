@@ -40,12 +40,12 @@ jobs:
       - name: Generate artifact attestation
         uses: actions/attest-build-provenance@v3
         with:
-          subject-path: ${{ steps.repo.outputs.repo }}*
+          subject-path: ${{ steps.repo.outputs.repo }}-*
       - name: Upload build artifact
         uses: actions/upload-artifact@v6
         with:
           name: ${{ steps.repo.outputs.repo }}-${{ steps.version.outputs.version }}-${{ matrix.os }}-${{ matrix.arch }}
-          path: ${{ steps.repo.outputs.repo }}*
+          path: ${{ steps.repo.outputs.repo }}-*
   docker-image:
     runs-on: ubuntu-latest
     steps:
@@ -98,11 +98,16 @@ jobs:
       - name: Get name of repo
         id: repo
         run: echo "repo=$(echo ${{ github.repository }} | cut -d/ -f2 | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
+      - name: Download artifacts
+        uses: actions/download-artifact@v7
+        with:
+          pattern: ${{ steps.repo.outputs.repo }}-${{ steps.version.outputs.version }}-*
+          merge-multiple: true
       - name: Release
         uses: ncipollo/release-action@v1
         with:
           generateReleaseNotes: true
           makeLatest: "legacy"
           name: "Version ${{ steps.version.outputs.version }}"
-          artifacts: "${{ steps.repo.outputs.repo }}-${{ steps.version.outputs.version }}*"
+          artifacts: "${{ steps.repo.outputs.repo }}-${{ steps.version.outputs.version }}-*"
           immutableCreate: true
