@@ -57,16 +57,20 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Get Git commit timestamps
+        id: timestamp
+        run: echo "timestamp=$(git log -1 --pretty=%ct)" >> $GITHUB_OUTPUT
+      - name: Get Git commit timestamp in iso8601 format
+        id: iso8601
+        run: echo "iso8601=$(git log -n1 --pretty=%cI)" >> $GITHUB_OUTPUT
       - name: Setup Docker Buildx
         uses: docker/setup-buildx-action@v3
       - name: Extract metadata
         id: meta
         uses: docker/metadata-action@v5
         with:
+          labels: "org.opencontainers.image.created=${{ steps.iso8601.outputs.iso8601 }}"
           images: "ghcr.io/${{ github.repository }}"
-      - name: Get Git commit timestamps
-        id: timestamp
-        run: echo "timestamp=$(git log -1 --pretty=%ct)" >> $GITHUB_OUTPUT
       - name: Build and push image
         uses: docker/build-push-action@v6
         with:
@@ -93,7 +97,7 @@ jobs:
         run: echo "version=$(echo ${{ github.ref_name }} | cut -c2- -)" >> $GITHUB_OUTPUT
       - name: Get name of repo
         id: repo
-        run: echo "repo=$(echo ${{ github.repository }} | cut -d/ -f2) | tr '[:upper:]' '[:lower:]'" >> $GITHUB_OUTPUT
+        run: echo "repo=$(echo ${{ github.repository }} | cut -d/ -f2 | tr '[:upper:]' '[:lower:])'" >> $GITHUB_OUTPUT
       - name: Release
         uses: ncipollo/release-action@v1
         with:
