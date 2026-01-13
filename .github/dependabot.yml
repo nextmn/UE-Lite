@@ -14,7 +14,7 @@ updates:
       - "louisroyer"
   - package-ecosystem: "docker"
     directory: "/"
-    scredule:
+    schedule:
       interval: "daily"
     assignees:
       - "louisroyer"
