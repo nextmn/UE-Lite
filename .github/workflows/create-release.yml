@@ -97,7 +97,7 @@ jobs:
         run: echo "version=$(echo ${{ github.ref_name }} | cut -c2- -)" >> $GITHUB_OUTPUT
       - name: Get name of repo
         id: repo
-        run: echo "repo=$(echo ${{ github.repository }} | cut -d/ -f2 | tr '[:upper:]' '[:lower:])'" >> $GITHUB_OUTPUT
+        run: echo "repo=$(echo ${{ github.repository }} | cut -d/ -f2 | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
       - name: Release
         uses: ncipollo/release-action@v1
         with:
