@@ -1,13 +1,6 @@
-*.swp
-.gitignore
-.github
-.pre-commit-config.yaml
-config
-LICENSE
-Makefile
-README.md
-ue-lite
-Dockerfile
-.dockerignore
+# We can only ignore eventual build binary file.
+# Everything that related to git, or is committed in git repository *MUST NOT* be ignored.
+# In particular, `.git` repository *MUST* be preserved because we use it to detect the version, which is included in the build binary file.
+# This is necessary to ensure reproductible build (of the binary inside the Docker image).
 
-# make sure to not ignore .git: it is required to have the right version displayed
+ue-lite
