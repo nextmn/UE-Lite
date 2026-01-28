@@ -10,7 +10,7 @@ RUN go mod download && go mod verify
 COPY . .
 RUN CGO_ENABLED=0 go build -o /usr/local/bin/ue-lite
 
-FROM alpine:3.23.2
+FROM alpine:3.23.3
 RUN apk add --no-cache iptables iproute2
 COPY --from=builder /usr/local/bin/ue-lite /usr/local/bin/ue-lite
 ENTRYPOINT ["ue-lite"]
