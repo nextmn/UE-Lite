@@ -36,7 +36,7 @@ jobs:
       - name: Install depends
         run: go get .
       - name: Build
-        run: go build -v -o ${{ steps.repo.outputs.repo }}-${{ steps.version.outputs.version }}-${{ matrix.os }}-${{ matrix.arch }}
+        run: go build -v -trimpath -o ${{ steps.repo.outputs.repo }}-${{ steps.version.outputs.version }}-${{ matrix.os }}-${{ matrix.arch }}
       - name: Generate artifact attestation
         uses: actions/attest-build-provenance@v3
         with:

@@ -11,7 +11,7 @@ MKDIRP = mkdir -p
 .PHONY: install uninstall build clean default
 default: build
 build:
-	go build
+	CGO_ENABLED=0 go build -trimpath
 clean:
 	go clean
 reinstall: uninstall install
