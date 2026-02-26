@@ -42,7 +42,7 @@ jobs:
         with:
           subject-path: ${{ steps.repo.outputs.repo }}-*
       - name: Upload build artifact
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ steps.repo.outputs.repo }}-${{ steps.version.outputs.version }}-${{ matrix.os }}-${{ matrix.arch }}
           path: ${{ steps.repo.outputs.repo }}-*
