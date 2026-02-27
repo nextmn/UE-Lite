@@ -102,7 +102,7 @@ jobs:
         id: repo
         run: echo "repo=$(echo ${{ github.repository }} | cut -d/ -f2 | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
       - name: Download artifacts
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           pattern: ${{ steps.repo.outputs.repo }}-${{ steps.version.outputs.version }}-*
           merge-multiple: true
