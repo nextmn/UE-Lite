@@ -67,7 +67,7 @@ jobs:
         uses: docker/setup-buildx-action@v3
       - name: Extract metadata
         id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           labels: "org.opencontainers.image.created=${{ steps.iso8601.outputs.iso8601 }}"
           images: "ghcr.io/${{ github.repository }}"
