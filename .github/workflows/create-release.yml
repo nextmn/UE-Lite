@@ -64,7 +64,7 @@ jobs:
         id: iso8601
         run: echo "iso8601=$(git log -n1 --pretty=%cI)" >> $GITHUB_OUTPUT
       - name: Setup Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
       - name: Extract metadata
         id: meta
         uses: docker/metadata-action@v6
