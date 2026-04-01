@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/netip"
+	"time"
 
 	"github.com/nextmn/ue-lite/internal/common"
 	"github.com/nextmn/ue-lite/internal/config"
@@ -31,15 +32,17 @@ type PduSessions struct {
 	UserAgent string
 	reqPs     []config.PDUSession
 	radio     *radio.Radio
+	delay     time.Duration
 }
 
-func NewPduSessions(control jsonapi.ControlURI, r *radio.Radio, reqPs []config.PDUSession, userAgent string) *PduSessions {
+func NewPduSessions(control jsonapi.ControlURI, r *radio.Radio, delay time.Duration, reqPs []config.PDUSession, userAgent string) *PduSessions {
 	return &PduSessions{
 		Client:    http.Client{},
 		Control:   control,
 		UserAgent: userAgent,
 		reqPs:     reqPs,
 		radio:     r,
+		delay:     delay,
 	}
 }
 
@@ -70,12 +73,23 @@ func (p *PduSessions) InitEstablish(gnb jsonapi.ControlURI, dnn string) error {
 	}
 	req.Header.Set("User-Agent", p.UserAgent)
 	req.Header.Set("Content-Type", "application/json; charset=UTF-8")
-	resp, err := p.Client.Do(req)
-	if err != nil {
-		return err
+
+	ctxDelay, cancel := context.WithTimeout(ctx, p.delay)
+	defer cancel()
+	select {
+	case <-ctxDelay.Done():
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+			resp, err := p.Client.Do(req)
+			if err != nil {
+				return err
+			}
+			defer resp.Body.Close()
+			return nil
+		}
 	}
-	defer resp.Body.Close()
-	return nil
 }
 
 func (p *PduSessions) Start(ctx context.Context) error {
@@ -85,6 +99,8 @@ func (p *PduSessions) Start(ctx context.Context) error {
 	logrus.WithFields(logrus.Fields{
 		"number-of-pdu-sessions-requested": len(p.reqPs),
 	}).Info("Starting PDU Sessions Manager")
+
+	// TODO: do this concurrently
 	for _, ps := range p.reqPs {
 		if err := p.InitEstablish(ps.Gnb, ps.Dnn); err != nil {
 			return err

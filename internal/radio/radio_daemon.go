@@ -71,14 +71,14 @@ func (r *RadioDaemon) runUplinkDaemon(ctx context.Context, srv *net.UDPConn, ifa
 		case <-ctx.Done():
 			return ctx.Err()
 		default:
-			if err := r.handleUplinkPDU(srv, ifacetun); err != nil {
+			if err := r.handleUplinkPDU(ctx, srv, ifacetun); err != nil {
 				logrus.WithError(err).Trace("Packet dropped")
 			}
 		}
 	}
 }
 
-func (r *RadioDaemon) handleUplinkPDU(srv *net.UDPConn, ifacetun *water.Interface) error {
+func (r *RadioDaemon) handleUplinkPDU(ctx context.Context, srv *net.UDPConn, ifacetun *water.Interface) error {
 	buf := make([]byte, tun.TUN_MTU)
 	n, err := ifacetun.Read(buf)
 	if err != nil {
@@ -94,7 +94,7 @@ func (r *RadioDaemon) handleUplinkPDU(srv *net.UDPConn, ifacetun *water.Interfac
 		return ErrMalformedPDU
 	}
 
-	if err := r.Radio.Write(buf[:n], srv, src); err == nil {
+	if err := r.Radio.Write(ctx, buf[:n], srv, src); err == nil {
 		logrus.WithFields(
 			logrus.Fields{
 				"ip-addr": src,

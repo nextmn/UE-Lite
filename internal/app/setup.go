@@ -27,8 +27,8 @@ type Setup struct {
 
 func NewSetup(config *config.UEConfig) *Setup {
 	tunMan := tun.NewTunManager()
-	r := radio.NewRadio(config.Control.Uri, tunMan, config.Ran.BindAddr, "go-github-nextmn-ue-lite")
-	ps := session.NewPduSessions(config.Control.Uri, r, config.Ran.PDUSessions, "go-github-nextmn-ue-lite")
+	r := radio.NewRadio(config.Control.Uri, tunMan, config.Ran.OneWayDelays.Data, config.Ran.BindAddr, "go-github-nextmn-ue-lite")
+	ps := session.NewPduSessions(config.Control.Uri, r, config.Ran.OneWayDelays.Control, config.Ran.PDUSessions, "go-github-nextmn-ue-lite")
 	return &Setup{
 		config:           config,
 		httpServerEntity: NewHttpServerEntity(config.Control.BindAddr, r, ps),

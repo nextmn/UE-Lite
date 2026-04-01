@@ -10,6 +10,7 @@ import (
 	"net/netip"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/nextmn/json-api/jsonapi"
 
@@ -56,10 +57,16 @@ type Control struct {
 	BindAddr netip.AddrPort     `yaml:"bind-addr"` // in the form `ip:port`
 }
 
+type OneWayDelays struct {
+	Control time.Duration `yaml:"control"`
+	Data    time.Duration `yaml:"data"`
+}
+
 type Ran struct {
-	BindAddr    netip.AddrPort       `yaml:"bind-addr"`    // in the form ip:port
-	Gnbs        []jsonapi.ControlURI `yaml:"gnbs"`         // list of gnb used
-	PDUSessions []PDUSession         `yaml:"pdu-sessions"` // list of pdu sessions that will be established
+	BindAddr     netip.AddrPort       `yaml:"bind-addr"`      // in the form ip:port
+	OneWayDelays OneWayDelays         `yaml:"one-way-delays"` // one-way-delays used for uplink
+	Gnbs         []jsonapi.ControlURI `yaml:"gnbs"`           // list of gnb used
+	PDUSessions  []PDUSession         `yaml:"pdu-sessions"`   // list of pdu sessions that will be established
 }
 
 type PDUSession struct {
