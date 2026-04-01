@@ -7,6 +7,7 @@ package session
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
 
@@ -86,7 +87,18 @@ func (p *PduSessions) HandleHandoverCommand(m n1n2.HandoverCommand) {
 	}
 	req.Header.Set("User-Agent", p.UserAgent)
 	req.Header.Set("Content-Type", "application/json; charset=UTF-8")
-	if _, err := p.Client.Do(req); err != nil {
-		logrus.WithError(err).Error("Could not send ps/handover-confirm")
+
+	ctxDelay, cancel := context.WithTimeout(ctx, p.delay)
+	defer cancel()
+	select {
+	case <-ctxDelay.Done():
+		select {
+		case <-ctx.Done():
+			logrus.WithError(err).Error("Context was done before ps/handover-confirm")
+		default:
+			if _, err := p.Client.Do(req); err != nil {
+				logrus.WithError(err).Error("Could not send ps/handover-confirm")
+			}
+		}
 	}
 }

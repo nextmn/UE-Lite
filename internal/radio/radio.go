@@ -7,11 +7,13 @@ package radio
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"net"
 	"net/http"
 	"net/netip"
 	"sync"
+	"time"
 
 	"github.com/nextmn/ue-lite/internal/common"
 	"github.com/nextmn/ue-lite/internal/tun"
@@ -33,9 +35,10 @@ type Radio struct {
 	Control      jsonapi.ControlURI
 	Data         netip.AddrPort
 	UserAgent    string
+	delay        time.Duration
 }
 
-func NewRadio(control jsonapi.ControlURI, tunMan *tun.TunManager, data netip.AddrPort, userAgent string) *Radio {
+func NewRadio(control jsonapi.ControlURI, tunMan *tun.TunManager, delay time.Duration, data netip.AddrPort, userAgent string) *Radio {
 	return &Radio{
 		peerMap:      sync.Map{},
 		routingTable: sync.Map{},
@@ -44,6 +47,7 @@ func NewRadio(control jsonapi.ControlURI, tunMan *tun.TunManager, data netip.Add
 		Data:         data,
 		UserAgent:    userAgent,
 		Tun:          tunMan,
+		delay:        delay,
 	}
 }
 
@@ -95,7 +99,8 @@ func (r *Radio) GetRoutes() map[netip.Addr]jsonapi.ControlURI {
 	return sessions
 }
 
-func (r *Radio) Write(pkt []byte, srv *net.UDPConn, ue netip.Addr) error {
+func (r *Radio) Write(ctx context.Context, pkt []byte, srv *net.UDPConn, ue netip.Addr) error {
+	radioCtx := r.Context()
 	gnb, ok := r.routingTable.Load(ue)
 	if !ok {
 		logrus.Trace("PDU Session not found for this IP Address")
@@ -108,9 +113,21 @@ func (r *Radio) Write(pkt []byte, srv *net.UDPConn, ue netip.Addr) error {
 		return ErrUnknownGnb
 	}
 
-	_, err := srv.WriteToUDPAddrPort(pkt, gnbRan.(netip.AddrPort))
+	ctxDelay, cancel := context.WithTimeout(radioCtx, r.delay)
+	defer cancel()
+	select {
+	case <-ctxDelay.Done():
+		select {
+		case <-radioCtx.Done():
+			return radioCtx.Err()
+		default:
+			_, err := srv.WriteToUDPAddrPort(pkt, gnbRan.(netip.AddrPort))
+			return err
+		}
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 
-	return err
 }
 
 func (r *Radio) InitPeer(gnb jsonapi.ControlURI) error {
