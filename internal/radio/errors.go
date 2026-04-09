@@ -10,8 +10,10 @@ import (
 )
 
 var (
-	ErrNilTunIface             = errors.New("nil TUN interface")
-	ErrNilUdpConn              = errors.New("nil UDP Connection")
+	// Programming errors (used for panicking)
+	errNilTunIface = errors.New("nil TUN interface")
+	errNilUdpConn  = errors.New("nil UDP Connection")
+
 	ErrUnknownGnb              = errors.New("unknown gNB")
 	ErrUnexpectedGnb           = errors.New("PDU session do not use the expected gNB")
 	ErrPduSessionNotFound      = errors.New("no PDU Session found for this IP Address")

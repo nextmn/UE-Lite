@@ -93,9 +93,7 @@ func (p *PduSessions) InitEstablish(gnb jsonapi.ControlURI, dnn string) error {
 }
 
 func (p *PduSessions) Start(ctx context.Context) error {
-	if err := p.InitContext(ctx); err != nil {
-		return err
-	}
+	p.InitContext(ctx)
 	logrus.WithFields(logrus.Fields{
 		"number-of-pdu-sessions-requested": len(p.reqPs),
 	}).Info("Starting PDU Sessions Manager")

@@ -39,10 +39,10 @@ func NewRadioDaemon(control jsonapi.ControlURI, gnbs []jsonapi.ControlURI, radio
 
 func (r *RadioDaemon) runDownlinkDaemon(ctx context.Context, srv *net.UDPConn, ifacetun *water.Interface) error {
 	if srv == nil {
-		return ErrNilUdpConn
+		panic(errNilUdpConn)
 	}
 	if ifacetun == nil {
-		return ErrNilTunIface
+		panic(errNilTunIface)
 	}
 	for {
 		select {
@@ -61,10 +61,10 @@ func (r *RadioDaemon) runDownlinkDaemon(ctx context.Context, srv *net.UDPConn, i
 
 func (r *RadioDaemon) runUplinkDaemon(ctx context.Context, srv *net.UDPConn, ifacetun *water.Interface) error {
 	if srv == nil {
-		return ErrNilUdpConn
+		panic(errNilUdpConn)
 	}
 	if ifacetun == nil {
-		return ErrNilTunIface
+		panic(errNilTunIface)
 	}
 	for {
 		select {
@@ -105,9 +105,7 @@ func (r *RadioDaemon) handleUplinkPDU(ctx context.Context, srv *net.UDPConn, ifa
 }
 
 func (r *RadioDaemon) Start(ctx context.Context) error {
-	if err := r.Radio.InitContext(ctx); err != nil {
-		return err
-	}
+	r.Radio.InitContext(ctx)
 	ifacetun := r.Radio.Tun.OpenTun()
 	go func(ctx context.Context) error {
 		defer r.Radio.Tun.CloseTun()
@@ -121,7 +119,7 @@ func (r *RadioDaemon) Start(ctx context.Context) error {
 	}
 	go func(ctx context.Context, srv *net.UDPConn) error {
 		if srv == nil {
-			return ErrNilUdpConn
+			panic(errNilUdpConn)
 		}
 		<-ctx.Done()
 		srv.Close()
