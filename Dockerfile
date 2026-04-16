@@ -6,11 +6,11 @@
 FROM golang:1.26.1 AS builder
 WORKDIR /src
 COPY go.mod go.sum ./
-RUN go mod download && go mod verify
+RUN --mount=type=cache,target=/go/pkg/mod go mod download && go mod verify
 COPY . .
 # To make reproducible the `COPY --from=builder` layer reproducible, we set modification time to build timestamp
 # and we will copy the directory at once to avoid /usr/local/bin being "created" instead of copied (resulting in wrong a newer modification time).
-RUN CGO_ENABLED=0 go build -trimpath -o /usr/local/bin/ue-lite && touch --no-dereference --date="@$(ue-lite --build-timestamp)" /usr/local/bin /usr/local/bin/ue-lite
+RUN --mount=type=cache,target=/root/.cache/go-build CGO_ENABLED=0 go build -trimpath -o /usr/local/bin/ue-lite && touch --no-dereference --date="@$(ue-lite --build-timestamp)" /usr/local/bin /usr/local/bin/ue-lite
 
 FROM alpine:3.23.4
 COPY --from=builder /usr/local/bin /usr/local/bin
