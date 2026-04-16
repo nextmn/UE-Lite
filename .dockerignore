@@ -1,6 +1,6 @@
 # We can only ignore eventual build binary file.
 # Everything that related to git, or is committed in git repository *MUST NOT* be ignored.
 # In particular, `.git` repository *MUST* be preserved because we use it to detect the version, which is included in the build binary file.
-# This is necessary to ensure reproductible build (of the binary inside the Docker image).
+# This is necessary to ensure reproducible build (of the binary inside the Docker image).
 
 ue-lite
