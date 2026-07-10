@@ -17,6 +17,7 @@ import (
 	"github.com/nextmn/logrus-formatter/logger"
 
 	"github.com/nextmn/ue-lite/internal/app"
+	"github.com/nextmn/ue-lite/internal/app/build-time"
 	"github.com/nextmn/ue-lite/internal/config"
 
 	"github.com/sirupsen/logrus"
@@ -40,6 +41,13 @@ func main() {
 		},
 		Version: version,
 		Flags: []cli.Flag{
+			&cli.BoolFlag{
+				Name:   "build-timestamp",
+				Usage:  "print timestamp of build creation",
+				Hidden: true,
+				Local:  true,
+				Action: buildtime.PrintBuildTime,
+			},
 			&cli.StringFlag{
 				Name:        "config",
 				TakesFile:   true,
