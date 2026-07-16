@@ -30,7 +30,7 @@ jobs:
         id: repo
         run: echo "repo=$(echo ${{ github.repository }} | cut -d/ -f2 | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
       - name: Setup Go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
       - name: Install depends
