@@ -14,7 +14,7 @@ import (
 
 	"github.com/nextmn/json-api/jsonapi"
 
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v3"
 )
 
 var ErrEmptyConfigFilepath = errors.New("`$CONFIG` is not set, `config` flag is not set, and default config file does not exist")

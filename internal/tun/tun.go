@@ -82,9 +82,9 @@ func (t *TunManager) WaitShutdown(ctx context.Context) error {
 
 func newTunIface(ctx context.Context) (*water.Interface, error) {
 	config := water.Config{
-		DeviceType: water.TUN,
+		DeviceType:             water.TUN,
+		PlatformSpecificParams: platformSpecificParams(),
 	}
-	config.Name = TUN_NAME
 	iface, err := water.New(config)
 	if err != nil {
 		logrus.WithError(err).Error("Unable to allocate TUN interface")
