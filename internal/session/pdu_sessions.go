@@ -78,17 +78,15 @@ func (p *PduSessions) InitEstablish(gnb jsonapi.ControlURI, dnn string) error {
 	defer cancel()
 	select {
 	case <-ctxDelay.Done():
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		default:
-			resp, err := p.Client.Do(req)
-			if err != nil {
-				return err
-			}
-			defer resp.Body.Close()
-			return nil
+		if err := ctx.Err(); err != nil {
+			return err
 		}
+		resp, err := p.Client.Do(req)
+		if err != nil {
+			return err
+		}
+		defer resp.Body.Close()
+		return nil
 	}
 }
 

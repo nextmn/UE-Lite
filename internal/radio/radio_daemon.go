@@ -45,17 +45,15 @@ func (r *RadioDaemon) runDownlinkDaemon(ctx context.Context, srv *net.UDPConn, i
 		panic(errNilTunIface)
 	}
 	for {
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		default:
-			buf := make([]byte, tun.TUN_MTU)
-			n, err := srv.Read(buf)
-			if err != nil {
-				return err
-			}
-			ifacetun.Write(buf[:n])
+		if err := ctx.Err(); err != nil {
+			return err
 		}
+		buf := make([]byte, tun.TUN_MTU)
+		n, err := srv.Read(buf)
+		if err != nil {
+			return err
+		}
+		ifacetun.Write(buf[:n])
 	}
 }
 
@@ -67,13 +65,11 @@ func (r *RadioDaemon) runUplinkDaemon(ctx context.Context, srv *net.UDPConn, ifa
 		panic(errNilTunIface)
 	}
 	for {
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		default:
-			if err := r.handleUplinkPDU(ctx, srv, ifacetun); err != nil {
-				logrus.WithError(err).Trace("Packet dropped")
-			}
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		if err := r.handleUplinkPDU(ctx, srv, ifacetun); err != nil {
+			logrus.WithError(err).Trace("Packet dropped")
 		}
 	}
 }
@@ -137,13 +133,11 @@ func (r *RadioDaemon) Start(ctx context.Context) error {
 	}(ctx, srv, ifacetun)
 
 	for _, gnb := range r.Gnbs {
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		default:
-			if err := r.Radio.InitPeer(gnb); err != nil {
-				return err
-			}
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		if err := r.Radio.InitPeer(gnb); err != nil {
+			return err
 		}
 	}
 	return nil
