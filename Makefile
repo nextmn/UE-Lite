@@ -11,9 +11,9 @@ MKDIRP = mkdir -p
 .PHONY: install uninstall build clean default
 default: build
 build:
-	go build
+	@CGO_ENABLED=0 go build -ldflags="-s -w" -trimpath
 clean:
-	go clean
+	@go clean
 reinstall: uninstall install
 install:
 	$(INSTALL) ue-lite $(DESTDIR)$(bindir)/ue-lite

@@ -6,7 +6,7 @@
 FROM golang:1.27.1 AS builder
 WORKDIR /src
 COPY . .
-RUN --mount=type=cache,target=/go/pkg/mod --mount=type=cache,target=/root/.cache/go-build CGO_ENABLED=0 go build -o /usr/local/bin/ue-lite
+RUN --mount=type=cache,target=/go/pkg/mod --mount=type=cache,target=/root/.cache/go-build CGO_ENABLED=0 go build -ldflags="-s -w" -trimpath -o /usr/local/bin/ue-lite
 
 FROM alpine:3.24.2
 RUN apk add --no-cache iptables iproute2
