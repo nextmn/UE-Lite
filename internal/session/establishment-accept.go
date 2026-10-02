@@ -6,21 +6,24 @@
 package session
 
 import (
+	"encoding/json/v2"
 	"net/http"
 
 	"github.com/nextmn/json-api/jsonapi"
 	"github.com/nextmn/json-api/jsonapi/n1n2"
 
-	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 )
 
 // get status of the controller
-func (p *PduSessions) EstablishmentAccept(c *gin.Context) {
+func (p *PduSessions) EstablishmentAccept(w http.ResponseWriter, req *http.Request) {
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	w.Header().Set("Cache-Control", "no-cache")
 	var ps n1n2.PduSessionEstabAcceptMsg
-	if err := c.BindJSON(&ps); err != nil {
+	if err := json.UnmarshalRead(req.Body, &ps); err != nil {
 		logrus.WithError(err).Error("could not deserialize")
-		c.JSON(http.StatusBadRequest, jsonapi.MessageWithError{Message: "could not deserialize", Error: err})
+		w.WriteHeader(http.StatusBadRequest)
+		json.MarshalWrite(w, jsonapi.MessageWithError{Message: "could not deserialize", Error: err})
 		return
 	}
 
@@ -31,5 +34,6 @@ func (p *PduSessions) EstablishmentAccept(c *gin.Context) {
 
 	go p.CreatePduSession(ps.Addr, ps.Header.Gnb)
 
-	c.JSON(http.StatusAccepted, jsonapi.Message{Message: "please refer to logs for more information"})
+	w.WriteHeader(http.StatusAccepted)
+	json.MarshalWrite(w, jsonapi.Message{Message: "please refer to logs for more information"})
 }

@@ -7,6 +7,7 @@ package app
 
 import (
 	"context"
+	"encoding/json/v2"
 	"net"
 	"net/http"
 	"net/netip"
@@ -17,34 +18,22 @@ import (
 	"github.com/nextmn/ue-lite/internal/session"
 
 	"github.com/nextmn/json-api/healthcheck"
-	"github.com/nextmn/logrus-formatter/ginlogger"
 
-	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 )
 
 type HttpServerEntity struct {
 	srv    *http.Server
-	ps     *session.PduSessions
-	radio  *radio.Radio
-	cli    *cli.Cli
 	closed chan struct{}
 }
 
 func NewHttpServerEntity(bindAddr netip.AddrPort, r *radio.Radio, ps *session.PduSessions) *HttpServerEntity {
-	c := cli.NewCli(r, ps)
-	gin.SetMode(gin.ReleaseMode)
-	h := ginlogger.Default()
-	h.GET("/status", Status)
-
-	// CLI
-	c.Register(h)
-
-	// Radio
-	r.Register(h)
-
-	// Pdu Session
-	ps.Register(h)
+	c := cli.Cli{Radio: r, PduSessions: ps}
+	h := http.NewServeMux()
+	h.HandleFunc("GET /status", Status)
+	h.Handle("/cli", http.StripPrefix("/cli", c.Handler()))
+	h.Handle("/radio", http.StripPrefix("/radio", r.Handler()))
+	h.Handle("/ps", http.StripPrefix("/ps", r.Handler()))
 
 	logrus.WithFields(logrus.Fields{"http-addr": bindAddr}).Info("HTTP Server created")
 	e := HttpServerEntity{
@@ -52,9 +41,6 @@ func NewHttpServerEntity(bindAddr netip.AddrPort, r *radio.Radio, ps *session.Pd
 			Addr:    bindAddr.String(),
 			Handler: h,
 		},
-		ps:     ps,
-		radio:  r,
-		cli:    c,
 		closed: make(chan struct{}),
 	}
 	return &e
@@ -93,10 +79,12 @@ func (e *HttpServerEntity) WaitShutdown(ctx context.Context) error {
 }
 
 // get status of the controller
-func Status(c *gin.Context) {
+func Status(w http.ResponseWriter, req *http.Request) {
 	status := healthcheck.Status{
 		Ready: true,
 	}
-	c.Header("Cache-Control", "no-cache")
-	c.JSON(http.StatusOK, status)
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.WriteHeader(http.StatusOK)
+	json.MarshalWrite(w, status)
 }

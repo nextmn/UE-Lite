@@ -6,26 +6,30 @@
 package cli
 
 import (
+	"encoding/json/v2"
 	"net/http"
 
 	"github.com/nextmn/json-api/jsonapi"
 
-	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 )
 
-func (cli *Cli) PsEstablish(c *gin.Context) {
+func (cli Cli) PsEstablish(w http.ResponseWriter, req *http.Request) {
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	w.Header().Set("Cache-Control", "no-cache")
 	var peer CliPeerMsg
-	if err := c.BindJSON(&peer); err != nil {
+	if err := json.UnmarshalRead(req.Body, &peer); err != nil {
 		logrus.WithError(err).Error("could not deserialize")
-		c.JSON(http.StatusBadRequest, jsonapi.MessageWithError{Message: "could not deserialize", Error: err})
+		w.WriteHeader(http.StatusBadRequest)
+		json.MarshalWrite(w, jsonapi.MessageWithError{Message: "could not deserialize", Error: err})
 		return
 	}
 	go cli.HandlePsEstablish(peer)
-	c.JSON(http.StatusAccepted, jsonapi.Message{Message: "please refer to logs for more information"})
+	w.WriteHeader(http.StatusAccepted)
+	json.MarshalWrite(w, jsonapi.Message{Message: "please refer to logs for more information"})
 }
 
-func (cli *Cli) HandlePsEstablish(peer CliPeerMsg) {
+func (cli Cli) HandlePsEstablish(peer CliPeerMsg) {
 	// TODO: first, check if radio link is established
 	if err := cli.PduSessions.InitEstablish(peer.Gnb, peer.Dnn); err != nil {
 		logrus.WithError(err).WithFields(logrus.Fields{

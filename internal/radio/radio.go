@@ -8,7 +8,7 @@ package radio
 import (
 	"bytes"
 	"context"
-	"encoding/json"
+	"encoding/json/v2"
 	"net"
 	"net/http"
 	"net/netip"
@@ -21,7 +21,6 @@ import (
 	"github.com/nextmn/json-api/jsonapi"
 	"github.com/nextmn/json-api/jsonapi/n1n2"
 
-	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 )
 
@@ -160,7 +159,9 @@ func (r *Radio) InitPeer(gnb jsonapi.ControlURI) error {
 	return nil
 }
 
-func (r *Radio) Register(e *gin.Engine) {
-	e.GET("/radio", r.Status)
-	e.POST("/radio/peer", r.Peer)
+func (r *Radio) Handler() http.Handler {
+	sm := http.NewServeMux()
+	sm.HandleFunc("GET /radio", r.Status)
+	sm.HandleFunc("POST /radio/peer", r.Peer)
+	return sm
 }

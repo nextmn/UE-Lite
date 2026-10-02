@@ -8,7 +8,7 @@ package session
 import (
 	"bytes"
 	"context"
-	"encoding/json"
+	"encoding/json/v2"
 	"net/http"
 	"net/netip"
 	"time"
@@ -20,7 +20,6 @@ import (
 	"github.com/nextmn/json-api/jsonapi"
 	"github.com/nextmn/json-api/jsonapi/n1n2"
 
-	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 )
 
@@ -46,10 +45,12 @@ func NewPduSessions(control jsonapi.ControlURI, r *radio.Radio, delay time.Durat
 	}
 }
 
-func (p *PduSessions) Register(e *gin.Engine) {
-	e.GET("/ps", p.Status)
-	e.POST("/ps/establishment-accept", p.EstablishmentAccept)
-	e.POST("/ps/handover-command", p.HandoverCommand)
+func (p *PduSessions) Handler() http.Handler {
+	sm := http.NewServeMux()
+	sm.HandleFunc("GET /", p.Status)
+	sm.HandleFunc("POST /establishment-accept", p.EstablishmentAccept)
+	sm.HandleFunc("POST /handover-command", p.HandoverCommand)
+	return sm
 }
 
 func (p *PduSessions) InitEstablish(gnb jsonapi.ControlURI, dnn string) error {

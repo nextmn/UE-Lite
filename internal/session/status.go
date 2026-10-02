@@ -6,14 +6,14 @@
 package session
 
 import (
+	"encoding/json/v2"
 	"net/http"
-
-	"github.com/gin-gonic/gin"
 )
 
-func (p *PduSessions) Status(c *gin.Context) {
+func (p *PduSessions) Status(w http.ResponseWriter, req *http.Request) {
 	sessions := p.radio.GetRoutes()
-
-	c.Header("Cache-Control", "no-cache")
-	c.JSON(http.StatusOK, sessions)
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.WriteHeader(http.StatusOK)
+	json.MarshalWrite(w, sessions)
 }

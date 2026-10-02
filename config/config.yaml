@@ -13,4 +13,4 @@ ran:
       dnn: "nextmn-lite"
 
 logger:
-  level: "trace"
+  level: "info"

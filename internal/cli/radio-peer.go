@@ -6,27 +6,31 @@
 package cli
 
 import (
+	"encoding/json/v2"
 	"net/http"
 
 	"github.com/nextmn/json-api/jsonapi"
 
-	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 )
 
 // Allow to peer to a gNB
-func (cli *Cli) RadioPeer(c *gin.Context) {
+func (cli Cli) RadioPeer(w http.ResponseWriter, req *http.Request) {
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	w.Header().Set("Cache-Control", "no-cache")
 	var peer CliPeerMsg
-	if err := c.BindJSON(&peer); err != nil {
+	if err := json.UnmarshalRead(req.Body, &peer); err != nil {
 		logrus.WithError(err).Error("could not deserialize")
-		c.JSON(http.StatusBadRequest, jsonapi.MessageWithError{Message: "could not deserialize", Error: err})
+		w.WriteHeader(http.StatusBadRequest)
+		json.MarshalWrite(w, jsonapi.MessageWithError{Message: "could not deserialize", Error: err})
 		return
 	}
 	go cli.HandleRadioPeer(peer)
-	c.JSON(http.StatusAccepted, jsonapi.Message{Message: "please refer to logs for more information"})
+	w.WriteHeader(http.StatusAccepted)
+	json.MarshalWrite(w, jsonapi.Message{Message: "please refer to logs for more information"})
 }
 
-func (cli *Cli) HandleRadioPeer(peer CliPeerMsg) {
+func (cli Cli) HandleRadioPeer(peer CliPeerMsg) {
 	if err := cli.Radio.InitPeer(peer.Gnb); err != nil {
 		logrus.WithError(err).WithFields(logrus.Fields{
 			"gnb": peer.Gnb,

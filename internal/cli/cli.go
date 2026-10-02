@@ -6,12 +6,12 @@
 package cli
 
 import (
+	"net/http"
+
 	"github.com/nextmn/json-api/jsonapi"
 
 	"github.com/nextmn/ue-lite/internal/radio"
 	"github.com/nextmn/ue-lite/internal/session"
-
-	"github.com/gin-gonic/gin"
 )
 
 type Cli struct {
@@ -19,19 +19,14 @@ type Cli struct {
 	PduSessions *session.PduSessions
 }
 
-func NewCli(radio *radio.Radio, pduSessions *session.PduSessions) *Cli {
-	return &Cli{
-		Radio:       radio,
-		PduSessions: pduSessions,
-	}
-}
-
 type CliPeerMsg struct {
 	Gnb jsonapi.ControlURI `json:"gnb"`
 	Dnn string             `json:"dnn"`
 }
 
-func (cli *Cli) Register(e *gin.Engine) {
-	e.POST("/cli/radio/peer", cli.RadioPeer)
-	e.POST("/cli/ps/establish", cli.PsEstablish)
+func (cli Cli) Handler() http.Handler {
+	sm := http.NewServeMux()
+	sm.HandleFunc("POST /radio/peer", cli.RadioPeer)
+	sm.HandleFunc("POST /ps/establish", cli.PsEstablish)
+	return sm
 }

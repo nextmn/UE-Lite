@@ -6,14 +6,14 @@
 package radio
 
 import (
+	"encoding/json/v2"
 	"net/http"
 	"net/netip"
 
-	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 )
 
-func (r *Radio) Status(c *gin.Context) {
+func (r *Radio) Status(w http.ResponseWriter, req *http.Request) {
 	peers := make(map[string]netip.AddrPort)
 	r.peerMap.Range(func(key, value any) bool {
 		peers[key.(string)] = value.(netip.AddrPort)
@@ -24,6 +24,8 @@ func (r *Radio) Status(c *gin.Context) {
 		return true
 	})
 
-	c.Header("Cache-Control", "no-cache")
-	c.JSON(http.StatusOK, peers)
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.WriteHeader(http.StatusOK)
+	json.MarshalWrite(w, peers)
 }
