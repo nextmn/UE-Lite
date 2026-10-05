@@ -18,11 +18,11 @@ import (
 )
 
 type Setup struct {
-	config           *config.UEConfig
-	httpServerEntity *HttpServerEntity
-	radioDaemon      *radio.RadioDaemon
-	ps               *session.PduSessions
-	tunMan           *tun.TunManager
+	config      *config.UEConfig
+	httpServer  *HttpServer
+	radioDaemon *radio.RadioDaemon
+	ps          *session.PduSessions
+	tunMan      *tun.TunManager
 }
 
 func NewSetup(config *config.UEConfig) *Setup {
@@ -30,11 +30,11 @@ func NewSetup(config *config.UEConfig) *Setup {
 	r := radio.NewRadio(config.Control.Uri, tunMan, config.Ran.OneWayDelays.Data, config.Ran.BindAddr, "go-github-nextmn-ue-lite")
 	ps := session.NewPduSessions(config.Control.Uri, r, config.Ran.OneWayDelays.Control, config.Ran.PDUSessions, "go-github-nextmn-ue-lite")
 	return &Setup{
-		config:           config,
-		httpServerEntity: NewHttpServerEntity(config.Control.BindAddr, r, ps),
-		radioDaemon:      radio.NewRadioDaemon(config.Control.Uri, config.Ran.Gnbs, r, config.Ran.BindAddr),
-		ps:               ps,
-		tunMan:           tunMan,
+		config:      config,
+		httpServer:  NewHttpServer(config.Control.BindAddr, r, ps),
+		radioDaemon: radio.NewRadioDaemon(config.Control.Uri, config.Ran.Gnbs, r, config.Ran.BindAddr),
+		ps:          ps,
+		tunMan:      tunMan,
 	}
 }
 
@@ -48,8 +48,8 @@ func (s *Setup) waitShutdown(ctx context.Context) {
 	if s.tunMan != nil {
 		s.tunMan.WaitShutdown(ctx)
 	}
-	if s.httpServerEntity != nil {
-		s.httpServerEntity.WaitShutdown(ctx)
+	if s.httpServer != nil {
+		s.httpServer.WaitShutdown(ctx)
 	}
 }
 
@@ -60,7 +60,7 @@ func (s *Setup) Run(ctx context.Context) error {
 		s.waitShutdown(ctxShutdown)
 	}()
 
-	if err := s.httpServerEntity.Start(ctx); err != nil {
+	if err := s.httpServer.Start(ctx); err != nil {
 		return err
 	}
 

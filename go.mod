@@ -5,7 +5,7 @@ go 1.27.1
 require (
 	github.com/nextmn/cli-xdg v0.0.1
 	github.com/nextmn/json-api v0.1.1
-	github.com/nextmn/logrus-formatter v0.2.4
+	github.com/nextmn/logrus-formatter v0.3.0
 	github.com/sirupsen/logrus v1.10.2
 	github.com/songgao/water v0.0.0-20200317203138-2b4b6d7c09d8
 	github.com/urfave/cli/v3 v3.14.0

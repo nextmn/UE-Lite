@@ -18,62 +18,64 @@ import (
 	"github.com/nextmn/ue-lite/internal/session"
 
 	"github.com/nextmn/json-api/healthcheck"
+	"github.com/nextmn/logrus-formatter/httplog"
 
 	"github.com/sirupsen/logrus"
 )
 
-type HttpServerEntity struct {
+type HttpServer struct {
 	srv    *http.Server
 	closed chan struct{}
 }
 
-func NewHttpServerEntity(bindAddr netip.AddrPort, r *radio.Radio, ps *session.PduSessions) *HttpServerEntity {
+func NewHttpServer(bindAddr netip.AddrPort, r *radio.Radio, ps *session.PduSessions) *HttpServer {
 	c := cli.Cli{Radio: r, PduSessions: ps}
 	h := http.NewServeMux()
 	h.HandleFunc("GET /status", Status)
 	h.Handle("/cli", http.StripPrefix("/cli", c.Handler()))
 	h.Handle("/radio", http.StripPrefix("/radio", r.Handler()))
 	h.Handle("/ps", http.StripPrefix("/ps", r.Handler()))
+	logger := httplog.NewRequestLoggerMiddleware(h)
 
 	logrus.WithFields(logrus.Fields{"http-addr": bindAddr}).Info("HTTP Server created")
-	e := HttpServerEntity{
+	s := HttpServer{
 		srv: &http.Server{
 			Addr:    bindAddr.String(),
-			Handler: h,
+			Handler: logger,
 		},
 		closed: make(chan struct{}),
 	}
-	return &e
+	return &s
 }
 
-func (e *HttpServerEntity) Start(ctx context.Context) error {
-	l, err := net.Listen("tcp", e.srv.Addr)
+func (s *HttpServer) Start(ctx context.Context) error {
+	l, err := net.Listen("tcp", s.srv.Addr)
 	if err != nil {
 		return err
 	}
 	go func(ln net.Listener) {
 		logrus.Info("Starting HTTP Server")
-		if err := e.srv.Serve(ln); err != nil && err != http.ErrServerClosed {
+		if err := s.srv.Serve(ln); err != nil && err != http.ErrServerClosed {
 			logrus.WithError(err).Error("Http Server error")
 		}
 	}(l)
 	go func(ctx context.Context) {
-		defer close(e.closed)
+		defer close(s.closed)
 		<-ctx.Done()
 		ctxTimeout, cancel := context.WithTimeout(context.WithoutCancel(ctx), 100*time.Millisecond)
 		defer cancel()
-		if err := e.srv.Shutdown(ctxTimeout); err == nil {
+		if err := s.srv.Shutdown(ctxTimeout); err == nil {
 			logrus.Info("HTTP Server Shutdown")
 		}
 	}(ctx)
 	return nil
 }
 
-func (e *HttpServerEntity) WaitShutdown(ctx context.Context) error {
+func (s *HttpServer) WaitShutdown(ctx context.Context) error {
 	select {
 	case <-ctx.Done():
 		return ctx.Err()
-	case <-e.closed:
+	case <-s.closed:
 		return nil
 	}
 }
