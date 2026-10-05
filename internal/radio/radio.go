@@ -161,7 +161,7 @@ func (r *Radio) InitPeer(gnb jsonapi.ControlURI) error {
 
 func (r *Radio) Handler() http.Handler {
 	sm := http.NewServeMux()
-	sm.HandleFunc("GET /radio", r.Status)
-	sm.HandleFunc("POST /radio/peer", r.Peer)
+	sm.HandleFunc("GET /", r.Status)
+	sm.HandleFunc("POST /peer", r.Peer)
 	return sm
 }

@@ -34,7 +34,7 @@ func NewHttpServer(bindAddr netip.AddrPort, r *radio.Radio, ps *session.PduSessi
 	h.HandleFunc("GET /status", Status)
 	h.Handle("/cli", http.StripPrefix("/cli", c.Handler()))
 	h.Handle("/radio", http.StripPrefix("/radio", r.Handler()))
-	h.Handle("/ps", http.StripPrefix("/ps", r.Handler()))
+	h.Handle("/ps", http.StripPrefix("/ps", ps.Handler()))
 	logger := httplog.NewRequestLoggerMiddleware(h)
 
 	logrus.WithFields(logrus.Fields{"http-addr": bindAddr}).Info("HTTP Server created")
