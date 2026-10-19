@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 # SPDX-License-Identifier: MIT
 
-FROM golang:1.27.1 AS builder
+FROM golang:1.27.2 AS builder
 WORKDIR /src
 COPY . .
 RUN --mount=type=cache,target=/go/pkg/mod --mount=type=cache,target=/root/.cache/go-build CGO_ENABLED=0 go build -tags urfave_cli_no_template -ldflags="-s -w" -trimpath -o /usr/local/bin/ue-lite
