@@ -122,13 +122,20 @@ func (r *RadioDaemon) Start(ctx context.Context) error {
 		return ctx.Err()
 	}(ctx, srv)
 	go func(ctx context.Context, srv *net.UDPConn, ifacetun *water.Interface) {
-		if err := r.runDownlinkDaemon(ctx, srv, ifacetun); err != nil {
+		err := r.runDownlinkDaemon(ctx, srv, ifacetun)
+		if ctx.Err() != nil {
 			logrus.WithError(err).Error("Radio Downlink Daemon stopped")
+		} else {
+			logrus.WithError(err).Debug("Radio Downlink Daemon stopped")
 		}
+
 	}(ctx, srv, ifacetun)
 	go func(ctx context.Context, srv *net.UDPConn, ifacetun *water.Interface) {
-		if err := r.runUplinkDaemon(ctx, srv, ifacetun); err != nil {
+		err := r.runUplinkDaemon(ctx, srv, ifacetun)
+		if ctx.Err() != nil {
 			logrus.WithError(err).Error("Radio Uplink Daemon stopped")
+		} else {
+			logrus.WithError(err).Debug("Radio Uplink Daemon stopped")
 		}
 	}(ctx, srv, ifacetun)
 
