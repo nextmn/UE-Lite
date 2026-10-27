@@ -93,14 +93,12 @@ func (p *PduSessions) HandleHandoverCommand(m n1n2.HandoverCommand) {
 
 	ctxDelay, cancel := context.WithTimeout(ctx, p.delay)
 	defer cancel()
-	select {
-	case <-ctxDelay.Done():
-		if err := ctx.Err(); err != nil {
-			logrus.WithError(err).Error("Context was done before ps/handover-confirm")
-			return
-		}
-		if _, err := p.Client.Do(req); err != nil {
-			logrus.WithError(err).Error("Could not send ps/handover-confirm")
-		}
+	<-ctxDelay.Done()
+	if err := ctx.Err(); err != nil {
+		logrus.WithError(err).Error("Context was done before ps/handover-confirm")
+		return
+	}
+	if _, err := p.Client.Do(req); err != nil {
+		logrus.WithError(err).Error("Could not send ps/handover-confirm")
 	}
 }
