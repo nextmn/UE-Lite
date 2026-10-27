@@ -33,3 +33,7 @@ updates:
       interval: "daily"
     assignees:
       - "louisroyer"
+    groups:
+      docker-deps:
+        patterns:
+          - "*"

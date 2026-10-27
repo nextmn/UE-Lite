@@ -1,6 +1,6 @@
 module github.com/nextmn/ue-lite
 
-go 1.27.2
+go 1.27.3
 
 require (
 	github.com/nextmn/cli-xdg v0.0.1
