@@ -14,7 +14,7 @@ import (
 
 	"github.com/nextmn/json-api/jsonapi"
 
-	"go.yaml.in/yaml/v3"
+	"go.yaml.in/yaml/v4"
 )
 
 var ErrEmptyConfigFilepath = errors.New("`$CONFIG` is not set, `config` flag is not set, and default config file does not exist")
@@ -22,7 +22,7 @@ var ErrEmptyConfigFilepath = errors.New("`$CONFIG` is not set, `config` flag is 
 func ParseConf(file string) (*UEConfig, error) {
 	var conf UEConfig
 	if v, ok := os.LookupEnv("CONFIG"); ok {
-		err := yaml.Unmarshal([]byte(v), &conf)
+		err := yaml.Load([]byte(v), &conf)
 		if err != nil {
 			return nil, err
 		}
@@ -39,7 +39,7 @@ func ParseConf(file string) (*UEConfig, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = yaml.Unmarshal(yamlFile, &conf)
+	err = yaml.Load(yamlFile, &conf)
 	if err != nil {
 		return nil, err
 	}
